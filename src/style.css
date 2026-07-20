@@ -1,4 +1,175 @@
-﻿* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { width: 100%; height: 100%; font-family: 'Microsoft YaHei','PingFang SC',Arial,sans-serif; }
-body { background: #f5f0e8; color: #333; }
-#app { width: 100%; min-height: 100vh; }
+﻿/* === BambooOracle 全局样式 —— 水墨国风 === */
+:root {
+  --ink: #1a1a1a;
+  --ink-light: #3a3a3a;
+  --ink-wash: #5a5a5a;
+  --paper: #f5f0e8;
+  --paper-dark: #e8e0d0;
+  --paper-light: #faf7f0;
+  --gold: #b8860b;
+  --gold-light: #c9a96e;
+  --gold-pale: #d4c4a0;
+  --cinnabar: #c41e1e;
+  --cinnabar-light: #d43535;
+  --jade: #5b8c5a;
+  --jade-light: #7aaa78;
+  --cloud: #e8e0d0;
+  --shadow: rgba(26, 26, 26, 0.08);
+  --shadow-md: rgba(26, 26, 26, 0.12);
+  --shadow-lg: rgba(26, 26, 26, 0.18);
+  --radius: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'STSong', 'SimSun', 'KaiTi', 'STKaiti', serif;
+  background-color: var(--paper);
+  color: var(--ink);
+  line-height: 1.8;
+  min-height: 100vh;
+}
+
+/* 宣纸纹理背景 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(184, 134, 11, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(196, 30, 30, 0.02) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(91, 140, 90, 0.02) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+#app {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 通用链接重置 */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* 水墨分隔线 */
+.ink-divider {
+  width: 60px;
+  height: 3px;
+  background: var(--gold);
+  margin: 16px auto;
+  border: none;
+  position: relative;
+}
+.ink-divider::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 1px;
+  background: var(--gold-pale);
+}
+
+/* 页面通用header */
+.page-header {
+  text-align: center;
+  padding: 60px 20px 40px;
+}
+.page-header h1 {
+  font-size: 2rem;
+  font-family: 'KaiTi', 'STKaiti', 'Noto Serif SC', serif;
+  color: var(--ink);
+  letter-spacing: 4px;
+  margin-bottom: 12px;
+}
+.page-header p {
+  color: var(--ink-wash);
+  font-size: 1rem;
+  letter-spacing: 2px;
+}
+
+/* 印章装饰 */
+.seal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border: 2px solid var(--cinnabar);
+  color: var(--cinnabar);
+  font-family: 'KaiTi', 'STKaiti', serif;
+  font-size: 20px;
+  font-weight: bold;
+  transform: rotate(-8deg);
+  flex-shrink: 0;
+}
+
+/* 按钮系统 */
+.btn-ink {
+  display: inline-block;
+  padding: 12px 36px;
+  background: var(--ink);
+  color: var(--paper-light);
+  font-family: 'KaiTi', 'STKaiti', serif;
+  font-size: 1.05rem;
+  letter-spacing: 2px;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.btn-ink:hover {
+  background: var(--ink-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(26,26,26,0.2);
+}
+
+.btn-gold {
+  display: inline-block;
+  padding: 12px 36px;
+  background: var(--gold);
+  color: #fff;
+  font-family: 'KaiTi', 'STKaiti', serif;
+  font-size: 1.05rem;
+  letter-spacing: 2px;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.btn-gold:hover {
+  background: var(--gold-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(184,134,11,0.3);
+}
+
+.btn-outline {
+  display: inline-block;
+  padding: 10px 34px;
+  background: transparent;
+  color: var(--gold);
+  font-family: 'KaiTi', 'STKaiti', serif;
+  font-size: 1.05rem;
+  letter-spacing: 2px;
+  border: 2px solid var(--gold);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.btn-outline:hover {
+  background: var(--gold);
+  color: #fff;
+}

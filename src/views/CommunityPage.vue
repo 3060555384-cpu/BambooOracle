@@ -1,96 +1,78 @@
-﻿<template>
+<template>
   <div class="community-page">
     <div class="page-header">
-      <h1>&#128172; 爱好者社区</h1>
-      <p>分享有趣的甲骨文，交流学习心得，一起探索古老文字</p>
+      <h1>同好社群</h1>
+      <p>以文会友，共探甲骨</p>
+      <hr class="ink-divider" />
     </div>
-
     <div class="post-form">
-      <textarea v-model="newPost" class="post-input" placeholder="分享你发现的甲骨文知识或有趣的文字..." rows="3"></textarea>
-      <button class="btn-post" @click="submitPost" :disabled="!newPost.trim()">&#128221; 发布</button>
+      <textarea v-model="newPost" class="post-input" placeholder="分享你发现的甲骨文知识或有趣文字..." rows="3"></textarea>
+      <div class="form-footer">
+        <span class="form-hint">{{ newPost.length }}/500</span>
+        <button class="btn-ink" @click="submitPost" :disabled="!newPost.trim() || newPost.length > 500">发布</button>
+      </div>
     </div>
-
     <div class="post-list">
-      <div v-for="post in posts" :key="post.id" class="post-card">
-        <div class="post-meta">
-          <span class="post-avatar">&#128100;</span>
-          <span class="post-author">{{ post.author }}</span>
-          <span class="post-time">{{ post.time }}</span>
+      <article v-for="post in posts" :key="post.id" class="post-card">
+        <div class="post-head">
+          <div class="post-user">
+            <span class="post-avatar">&#128100;</span>
+            <div>
+              <span class="post-author">{{ post.author }}</span>
+              <span class="post-time">{{ post.time }}</span>
+            </div>
+          </div>
           <span class="post-tag">{{ post.tag }}</span>
         </div>
-        <p class="post-content">{{ post.content }}</p>
-        <div class="post-actions">
+        <p class="post-body">{{ post.content }}</p>
+        <div class="post-foot">
           <button @click="post.liked = !post.liked" :class="{ liked: post.liked }">
-            {{ post.liked ? '\u2764' : '\u2661' }} {{ post.likes + (post.liked ? 1 : 0) }}
+            <span class="heart-icon">{{ post.liked ? '\u2764' : '\u2661' }}</span>
+            {{ post.likes + (post.liked ? 1 : 0) }}
           </button>
           <button>&#128172; {{ post.comments }}</button>
           <button>&#128206; 分享</button>
         </div>
-      </div>
+      </article>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-
-interface Post {
-  id: number
-  author: string
-  time: string
-  tag: string
-  content: string
-  likes: number
-  liked: boolean
-  comments: number
-}
-
+interface Post { id: number; author: string; time: string; tag: string; content: string; likes: number; liked: boolean; comments: number }
 const newPost = ref('')
-
 const posts = ref<Post[]>([
-  { id: 1, author: '甲骨学爱好者', time: '2小时前', tag: '#甲骨趣谈', content: '今天发现"雨"字的甲骨文特别形象，上面的点就像雨滴落下，真是古人的智慧！', likes: 24, liked: false, comments: 5 },
-  { id: 2, author: '古文字研究', time: '5小时前', tag: '#学术交流', content: '分享一篇关于甲骨文数字化的论文：利用深度学习模型进行甲骨文识别的最新进展。准确率已经达到95%以上！', likes: 56, liked: false, comments: 12 },
-  { id: 3, author: '文化传承者', time: '昨天', tag: '#学习笔记', content: '"人"字的演变很有意思：从甲骨文的侧立人形，到金文、篆书，再到今天的楷书，形态变化很大但核心特征一直保留。', likes: 38, liked: false, comments: 7 },
+  { id: 1, author: '殷墟学人', time: '2小时前', tag: '甲骨趣谈', content: '今日发现"雨"字的甲骨文格外传神——上方横线似云，下方数点如雨滴洒落。三千年前的殷人，便以如此简洁的笔画描摹天地万象，令人叹服。', likes: 24, liked: false, comments: 5 },
+  { id: 2, author: '古文字研究者', time: '5小时前', tag: '学术动态', content: '分享一则好消息：基于深度学习的甲骨文识别模型最新进展——在OBC306数据集上Top-1准确率已达95%以上，个别高频字接近99%。传统考释与现代AI的碰撞，精彩。', likes: 56, liked: false, comments: 12 },
+  { id: 3, author: '文化守望者', time: '昨天', tag: '字形探源', content: '"人"字的演变颇具意味：甲骨文中作侧立人形，有头、身、臂、腿，栩栩如生。至金文渐简，小篆定型，终成今日楷书"人"字。一撇一捺，千年未断。', likes: 38, liked: false, comments: 7 },
+  { id: 4, author: '竹下问甲', time: '3天前', tag: '平台公告', content: '欢迎来到竹下问甲！本平台致力于以AI技术助力甲骨文识别与考释。识甲功能尚在优化中，欢迎上传拓片图片测试，并留下您的宝贵建议。', likes: 89, liked: false, comments: 15 },
 ])
-
-let nextId = 4
-
-function submitPost() {
-  if (!newPost.value.trim()) return
-  posts.value.unshift({
-    id: nextId++,
-    author: '我',
-    time: '刚刚',
-    tag: '#甲骨趣谈',
-    content: newPost.value,
-    likes: 0,
-    liked: false,
-    comments: 0
-  })
-  newPost.value = ''
-}
+let nextId = 5
+function submitPost() { if (!newPost.value.trim() || newPost.value.length > 500) return; posts.value.unshift({ id: nextId++, author: '我', time: '刚刚', tag: '甲骨趣谈', content: newPost.value, likes: 0, liked: false, comments: 0 }); newPost.value = '' }
 </script>
 
 <style scoped>
-.community-page { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
-.page-header { text-align: center; margin-bottom: 30px; }
-.page-header h1 { font-size: 28px; color: #1a1a2e; }
-.page-header p { color: #888; margin-top: 8px; }
-
-.post-form { background: white; border-radius: 12px; padding: 20px; margin-bottom: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
-.post-input { width: 100%; border: 1px solid #e0d6c8; border-radius: 8px; padding: 14px; font-size: 15px; resize: vertical; font-family: inherit; outline: none; box-sizing: border-box; }
-.post-input:focus { border-color: #c9a96e; }
-.btn-post { margin-top: 12px; padding: 10px 28px; background: #c9a96e; color: #1a1a2e; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
-.btn-post:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.post-list { display: flex; flex-direction: column; gap: 16px; }
-.post-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
-.post-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; color: #888; }
-.post-author { font-weight: bold; color: #333; }
-.post-tag { background: #fff8e1; color: #a08050; padding: 2px 10px; border-radius: 20px; font-size: 12px; }
-.post-content { font-size: 15px; color: #333; line-height: 1.8; margin-bottom: 12px; }
-.post-actions { display: flex; gap: 20px; }
-.post-actions button { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; padding: 4px 8px; border-radius: 4px; }
-.post-actions button:hover { background: #f5f0e8; }
-.post-actions button.liked { color: #e74c3c; }
+.community-page{max-width:760px;margin:0 auto;padding:0 20px 60px}
+.post-form{background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:28px;box-shadow:var(--shadow)}
+.post-input{width:100%;border:1px solid var(--paper-dark);border-radius:var(--radius-md);padding:14px 16px;font-size:.95rem;resize:vertical;font-family:inherit;outline:none;box-sizing:border-box;background:var(--paper-light);transition:border-color .3s;line-height:1.7}
+.post-input:focus{border-color:var(--gold);background:#fff}
+.form-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+.form-hint{font-size:.8rem;color:var(--ink-wash)}
+.post-list{display:flex;flex-direction:column;gap:20px}
+.post-card{background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-lg);padding:24px;box-shadow:var(--shadow);transition:box-shadow .3s}
+.post-card:hover{box-shadow:var(--shadow-md)}
+.post-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.post-user{display:flex;align-items:center;gap:10px}
+.post-avatar{font-size:2rem;line-height:1}
+.post-author{display:block;font-weight:bold;color:var(--ink);font-size:.95rem;letter-spacing:1px}
+.post-time{display:block;font-size:.75rem;color:var(--ink-wash)}
+.post-tag{background:var(--paper);color:var(--gold);padding:3px 12px;font-size:.75rem;border:1px solid var(--paper-dark);letter-spacing:1px;white-space:nowrap}
+.post-body{font-size:.95rem;color:var(--ink);line-height:1.9;margin-bottom:16px}
+.post-foot{display:flex;gap:24px}
+.post-foot button{background:none;border:none;color:var(--ink-wash);cursor:pointer;font-size:.85rem;padding:4px 8px;border-radius:var(--radius);transition:all .2s;display:flex;align-items:center;gap:4px}
+.post-foot button:hover{color:var(--ink);background:var(--paper)}
+.post-foot button.liked{color:var(--cinnabar-light)}
+.heart-icon{font-size:1rem}
+@media(max-width:600px){.post-head{flex-direction:column;gap:8px}}
 </style>
