@@ -1,0 +1,4 @@
+﻿* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; font-family: 'Microsoft YaHei','PingFang SC',Arial,sans-serif; }
+body { background: #f5f0e8; color: #333; }
+#app { width: 100%; min-height: 100vh; }
