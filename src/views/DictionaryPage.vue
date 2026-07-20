@@ -10,6 +10,9 @@
         <span v-if="search" class="search-clear" @click="search = ''">&times;</span>
       </div>
       <p class="search-result-hint" v-if="search">找到 {{ filteredChars.length }} 个结果</p>
+      <div class="filter-bar">
+        <button v-for="cat in categories" :key="cat" class="filter-tag" :class="{ active: selectedCat === cat }" @click="selectedCat = cat">{{ cat }}</button>
+      </div>
     </div>
     <div class="dict-grid">
       <div v-for="char in filteredChars" :key="char.char" class="dict-card" @click="selected = char">
@@ -22,7 +25,7 @@
       <p>未找到包含"{{ search }}"的甲骨文字</p>
     </div>
     <Teleport to="body">
-      <div v-if="selected" class="detail-overlay" @click.self="selected = null">
+      <div v-if="selected" class="detail-overlay" @click.self="selected = null" @keydown.esc="selected = null">
         <div class="detail-card">
           <button class="detail-close" @click="selected = null">&times;</button>
           <div class="detail-char">{{ selected.char }}</div>
@@ -42,6 +45,8 @@
 import { ref, computed } from 'vue'
 const search = ref('')
 const selected = ref<null | typeof chars[0]>(null)
+const selectedCat = ref('全部')
+const categories = ['全部', '象形字', '会意字', '指事字', '形声字']
 const chars = [
   { char: '\u65E5', meaning: '日 / 太阳', category: '象形字', desc: '外圆象太阳之形，中一点象光。卜辞中用作白天、日期，亦作祭名。殷人记日以干支，十日为一旬。' },
   { char: '\u6708', meaning: '月 / 月亮', category: '象形字', desc: '象半月之形，缺而不满。卜辞中记月份、夜晚皆用此字。殷历以月相变化定朔望。' },
@@ -65,9 +70,13 @@ const chars = [
   { char: '\u98DF', meaning: '食 / 食物', category: '会意字', desc: '上为口，下为盛食物的器皿。卜辞中用作食物、食用、日食月食等义。' },
 ]
 const filteredChars = computed(() => {
-  if (!search.value) return chars
-  const q = search.value
-  return chars.filter(c => c.meaning.includes(q) || c.char === q || c.category.includes(q))
+  let result = chars
+  if (selectedCat.value !== '全部') result = result.filter(c => c.category === selectedCat.value)
+  if (search.value) {
+    const q = search.value
+    result = result.filter(c => c.meaning.includes(q) || c.char === q || c.category.includes(q))
+  }
+  return result
 })
 </script>
 
@@ -80,7 +89,11 @@ const filteredChars = computed(() => {
 .search-clear{position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--ink-wash);font-size:1.1rem;padding:2px 6px}
 .search-clear:hover{color:var(--cinnabar)}
 .search-result-hint{text-align:center;color:var(--ink-wash);font-size:.85rem;margin-top:12px}
-.dict-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px;margin-top:32px}
+.filter-bar{display:flex;justify-content:center;gap:8px;margin-top:20px;flex-wrap:wrap}
+.filter-tag{background:var(--paper);border:1px solid var(--paper-dark);color:var(--ink-wash);font-size:.82rem;padding:6px 18px;cursor:pointer;font-family:inherit;letter-spacing:1px;transition:all .3s}
+.filter-tag:hover{border-color:var(--gold);color:var(--gold)}
+.filter-tag.active{background:var(--ink);color:var(--paper-light);border-color:var(--ink)}
+.dict-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px;margin-top:24px}
 .dict-card{background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-md);padding:22px 14px 18px;text-align:center;cursor:pointer;box-shadow:var(--shadow);transition:all .3s ease}
 .dict-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--gold-pale)}
 .dict-char{font-family:'KaiTi','STKaiti',serif;font-size:46px;color:var(--ink);line-height:1.2;margin-bottom:8px;transition:color .3s}

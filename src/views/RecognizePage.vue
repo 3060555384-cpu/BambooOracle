@@ -15,7 +15,7 @@
         </div>
       </div>
       <div v-else class="preview-section">
-        <img :src="previewUrl" class="preview-img" alt="预览" />
+        <img :src="previewUrl" class="preview-img" alt="preview" />
         <div class="preview-actions">
           <button class="btn-ink" @click="startRecognize" :disabled="recognizing">{{ recognizing ? '辨识中...' : '开始识甲' }}</button>
           <button class="btn-outline" @click="reset">重新上传</button>
@@ -36,6 +36,9 @@
           <div class="result-row"><span class="result-label">置信度</span><span class="result-value confidence">{{ result.confidence }}%</span></div>
         </div>
       </div>
+      <div class="result-actions">
+        <button class="btn-gold" @click="copyResult">{{ copied ? '已复制!' : '复制结果' }}</button>
+      </div>
     </div>
     <div class="tips-section">
       <div class="tips-card">
@@ -51,15 +54,17 @@ import { ref } from 'vue'
 const fileInput = ref<HTMLInputElement>()
 const previewUrl = ref('')
 const recognizing = ref(false)
+const copied = ref(false)
 const result = ref<{ char: string; meaning: string; type: string; confidence: number } | null>(null)
 function triggerUpload() { fileInput.value?.click() }
 function handleFile(e: Event) { const f = (e.target as HTMLInputElement).files; if (f?.length) { previewUrl.value = URL.createObjectURL(f[0]); result.value = null } }
 function handleDrop(e: DragEvent) { const f = e.dataTransfer?.files; if (f?.length) { previewUrl.value = URL.createObjectURL(f[0]); result.value = null } }
-function reset() { previewUrl.value = ''; result.value = null }
+function reset() { previewUrl.value = ''; result.value = null; copied.value = false }
+function copyResult() { if (result.value) { const t = result.value.char + ' - ' + result.value.meaning + ' (' + result.value.type + ', ' + result.value.confidence + '%)'; navigator.clipboard?.writeText(t).then(() => { copied.value = true; setTimeout(() => copied.value = false, 2000) }).catch(() => { const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); copied.value = true; setTimeout(() => copied.value = false, 2000) }) } }
 function startRecognize() {
   recognizing.value = true; result.value = null
   setTimeout(() => {
-    const c = [{ char: '\u65E5', meaning: '太阳、白天、日期', type: '象形字', confidence: 96.5 },{ char: '\u6708', meaning: '月亮、月份、夜晚', type: '象形字', confidence: 94.2 },{ char: '\u4EBA', meaning: '人类、人们', type: '象形字', confidence: 97.8 },{ char: '\u5927', meaning: '大的、伟大', type: '象形字', confidence: 93.1 }]
+    const c = [{ char: '日', meaning: '太阳、白天、日期', type: '象形字', confidence: 96.5 },{ char: '月', meaning: '月亮、月份、夜晚', type: '象形字', confidence: 94.2 },{ char: '人', meaning: '人类、人们', type: '象形字', confidence: 97.8 },{ char: '大', meaning: '大的、伟大', type: '象形字', confidence: 93.1 }]
     result.value = c[Math.floor(Math.random() * c.length)]; recognizing.value = false
   }, 1800)
 }
@@ -97,6 +102,7 @@ function startRecognize() {
 .result-value{font-size:1rem;color:var(--ink);letter-spacing:1px}
 .char-highlight{font-family:'KaiTi','STKaiti',serif;font-size:1.3rem;color:var(--ink)}
 .confidence{color:var(--jade)!important;font-weight:bold}
+.result-actions{display:flex;justify-content:center;margin-top:16px}
 .tips-section{margin-top:40px}
 .tips-card{background:var(--paper);border:1px solid var(--paper-dark);border-radius:var(--radius-md);padding:20px 24px}
 .tips-card h4{font-size:.95rem;color:var(--gold);letter-spacing:2px;margin-bottom:12px}
