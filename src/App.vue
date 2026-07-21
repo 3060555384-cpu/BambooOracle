@@ -39,6 +39,7 @@
         </transition>
       </router-view>
     </main>
+    <canvas ref="ginkgoCanvas" class="ginkgo-canvas"></canvas>
     <footer class="footer-ink">
       <div class="footer-inner">
         <p>竹下问甲 &copy; {{ year }} &mdash; 传承甲骨文明，探索文字之源</p>
@@ -55,13 +56,135 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 const year = new Date().getFullYear()
 const menuOpen = ref(false)
+const ginkgoCanvas = ref<HTMLCanvasElement>()
 const showTop = ref(false)
+let ginkgoParticles: { x: number; y: number; vx: number; vy: number; rot: number; vr: number; size: number; alpha: number; life: number }[] = []
+let ginkgoRAF = 0
+let mouseX = -100; let mouseY = -100
+let throttleTimer = 0
+
+function drawGinkgoLeaf(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, rot: number, alpha: number) {
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(rot)
+  ctx.globalAlpha = alpha
+  const s = size
+
+  // Ginkgo fan shape
+  ctx.beginPath()
+  ctx.moveTo(0, s * 0.6)
+  ctx.bezierCurveTo(-s * 0.8, s * 0.1, -s * 0.7, -s * 0.8, 0, -s * 0.9)
+  ctx.bezierCurveTo(s * 0.7, -s * 0.8, s * 0.8, s * 0.1, 0, s * 0.6)
+  // Notch cut
+  ctx.moveTo(0, -s * 0.3)
+  ctx.lineTo(s * 0.2, 0)
+  ctx.lineTo(0, -s * 0.45)
+  ctx.lineTo(-s * 0.2, 0)
+  ctx.closePath()
+  ctx.fillStyle = '#c9a96e'
+  ctx.fill()
+  ctx.strokeStyle = '#b8860b'
+  ctx.lineWidth = 0.6
+  ctx.stroke()
+
+  // Stem
+  ctx.beginPath()
+  ctx.moveTo(0, s * 0.6)
+  ctx.lineTo(0, s * 0.9)
+  ctx.strokeStyle = '#b8860b'
+  ctx.lineWidth = 1
+  ctx.stroke()
+
+  ctx.restore()
+}
+
+function spawnGinkgo(x: number, y: number) {
+  const count = 1 + Math.floor(Math.random() * 2)
+  for (let i = 0; i < count; i++) {
+    ginkgoParticles.push({
+      x: x + (Math.random() - 0.5) * 20,
+      y: y + (Math.random() - 0.5) * 10,
+      vx: (Math.random() - 0.5) * 1.2,
+      vy: 0.5 + Math.random() * 1.5,
+      rot: Math.random() * Math.PI * 2,
+      vr: (Math.random() - 0.5) * 0.04,
+      size: 8 + Math.random() * 10,
+      alpha: 0.9,
+      life: 0
+    })
+  }
+  if (ginkgoParticles.length > 60) ginkgoParticles.splice(0, ginkgoParticles.length - 60)
+}
+
+function animateGinkgo() {
+  const canvas = ginkgoCanvas.value
+  if (!canvas) return
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+  for (let i = ginkgoParticles.length - 1; i >= 0; i--) {
+    const p = ginkgoParticles[i]
+    p.x += p.vx + (Math.random() - 0.5) * 0.3
+    p.y += p.vy
+    p.rot += p.vr
+    p.life++
+    p.alpha = Math.max(0, 0.9 - p.life / 80)
+
+    drawGinkgoLeaf(ctx, p.x, p.y, p.size, p.rot, p.alpha)
+
+    if (p.life > 80 || p.alpha <= 0) {
+      ginkgoParticles.splice(i, 1)
+    }
+  }
+
+  ginkgoRAF = requestAnimationFrame(animateGinkgo)
+}
+
+function onMouseMove(e: MouseEvent) {
+  mouseX = e.clientX
+  mouseY = e.clientY
+  clearTimeout(throttleTimer)
+  throttleTimer = window.setTimeout(() => {
+    spawnGinkgo(mouseX, mouseY)
+  }, 40)
+}
+
+function resizeCanvas() {
+  const canvas = ginkgoCanvas.value
+  if (canvas) {
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+  }
+}
+
+function initGinkgo() {
+  resizeCanvas()
+  window.addEventListener('mousemove', onMouseMove, { passive: true })
+  window.addEventListener('resize', resizeCanvas)
+  ginkgoRAF = requestAnimationFrame(animateGinkgo)
+}
+
+function cleanupGinkgo() {
+  window.removeEventListener('mousemove', onMouseMove)
+  window.removeEventListener('resize', resizeCanvas)
+  cancelAnimationFrame(ginkgoRAF)
+  ginkgoParticles = []
+}
+
 function onScroll() { showTop.value = window.scrollY > 300 }
 function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }) }
 const router = useRouter()
 router.afterEach(() => { menuOpen.value = false })
-onMounted(() => { window.addEventListener('scroll', onScroll, { passive: true }) })
-onUnmounted(() => { window.removeEventListener('scroll', onScroll) })
+onMounted(() => {
+  window.addEventListener('scroll', onScroll, { passive: true })
+  initGinkgo()
+})
+onUnmounted(() => {
+  window.removeEventListener('scroll', onScroll)
+  cleanupGinkgo()
+})
 </script>
 
 <style scoped>
@@ -218,6 +341,7 @@ onUnmounted(() => { window.removeEventListener('scroll', onScroll) })
 .scroll-top-seal{font-family:'KaiTi','STKaiti',serif;font-size:20px;color:var(--cinnabar-light);font-weight:bold}
 
 /* 移动端响应式 */
+.ginkgo-canvas{position:fixed;inset:0;z-index:50;pointer-events:none}
 @media(max-width:768px){
 .hamburger{display:flex}
 .nav-links{position:fixed;top:64px;left:0;right:0;background:rgba(26,26,26,.97);flex-direction:column;gap:0;padding:12px 0;transform:translateY(-120%);transition:transform .3s ease;backdrop-filter:blur(10px);border-bottom:1px solid var(--gold)}
