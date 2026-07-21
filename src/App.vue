@@ -29,9 +29,20 @@
             <span class="nav-icon">&#128172;</span>
             <span>社群</span>
           </router-link>
+        <router-link v-if="!user" to="/login" class="nav-link nav-login">
+              <span class="nav-icon">&#128100;</span>
+              <span>登录</span>
+            </router-link>
+            <div v-else class="nav-user" @click="showUserMenu = !showUserMenu">
+              <span class="nav-user-initial">甲</span>
+              <span class="nav-user-name">{{ user?.nickname || '用户' }}</span>
+              <div v-if="showUserMenu" class="user-dropdown">
+                <button @click="logout">退出登录</button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
     <main class="main-view">
       <router-view v-slot="{ Component }">
         <transition name="page-fade" mode="out-in">
@@ -56,6 +67,21 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 const year = new Date().getFullYear()
 const menuOpen = ref(false)
+const showUserMenu = ref(false)
+const user = ref<any>(null)
+
+function checkAuth() {
+  const stored = localStorage.getItem('bamboooracle_user')
+  if (stored) {
+    try { user.value = JSON.parse(stored) } catch { user.value = null }
+  }
+}
+function logout() {
+  localStorage.removeItem('bamboooracle_user')
+  user.value = null
+  showUserMenu.value = false
+  router.push('/')
+}
 const ginkgoCanvas = ref<HTMLCanvasElement>()
 const showTop = ref(false)
 let ginkgoParticles: { x: number; y: number; vx: number; vy: number; rot: number; vr: number; size: number; alpha: number; life: number }[] = []
@@ -178,11 +204,17 @@ function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }) }
 const router = useRouter()
 router.afterEach(() => { menuOpen.value = false })
 onMounted(() => {
+  checkAuth()
   window.addEventListener('scroll', onScroll, { passive: true })
+  window.addEventListener('auth-change', checkAuth)
   initGinkgo()
+  document.addEventListener('click', (e) => {
+    if (showUserMenu.value && !(e.target as HTMLElement).closest('.nav-user')) showUserMenu.value = false
+  })
 })
 onUnmounted(() => {
   window.removeEventListener('scroll', onScroll)
+  window.removeEventListener('auth-change', checkAuth)
   cleanupGinkgo()
 })
 </script>
@@ -294,9 +326,16 @@ onUnmounted(() => {
   border-color: var(--gold);
   background: rgba(184,134,11,0.08);
 }
-.nav-icon {
-  font-size: 1rem;
-}
+.nav-icon { font-size: 1rem; }
+.nav-login{border:1px solid rgba(184,134,11,.3)}.nav-login:hover{background:rgba(184,134,11,.1)}
+.nav-user{position:relative;display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 12px;border-radius:var(--radius);border:1px solid var(--gold);transition:all .3s}
+.nav-user:hover{background:rgba(184,134,11,.08)}
+.nav-user-initial{width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:rgba(184,134,11,.15);color:var(--gold);font-family:'KaiTi','STKaiti',serif;font-size:14px;font-weight:bold;border-radius:50%}
+.nav-user-name{color:var(--gold);font-size:.85rem;letter-spacing:1px}
+.user-dropdown{position:absolute;top:100%;right:0;margin-top:8px;background:rgba(26,26,26,.97);border:1px solid var(--gold);border-radius:var(--radius);overflow:hidden;min-width:120px;z-index:110}
+.user-dropdown button{display:block;width:100%;padding:10px 16px;background:none;border:none;color:var(--gold-pale);cursor:pointer;font-family:inherit;font-size:.85rem;letter-spacing:1px;text-align:left;transition:all .2s}
+.user-dropdown button:hover{background:rgba(184,134,11,.1);color:var(--gold)}
+
 
 /* 主内容区 */
 .main-view {
