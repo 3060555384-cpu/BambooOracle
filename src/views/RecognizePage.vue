@@ -50,23 +50,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 const fileInput = ref<HTMLInputElement>()
 const previewUrl = ref('')
 const recognizing = ref(false)
-const copied = ref(false)
+const copied = ref(false); let recogTimer = 0
 const result = ref<{ char: string; meaning: string; type: string; confidence: number } | null>(null)
 function triggerUpload() { fileInput.value?.click() }
-function handleFile(e: Event) { const f = (e.target as HTMLInputElement).files; if (f?.length) { previewUrl.value = URL.createObjectURL(f[0]); result.value = null } }
-function handleDrop(e: DragEvent) { const f = e.dataTransfer?.files; if (f?.length) { previewUrl.value = URL.createObjectURL(f[0]); result.value = null } }
-function reset() { previewUrl.value = ''; result.value = null; copied.value = false }
+function handleFile(e: Event) { const f = (e.target as HTMLInputElement).files; if (f?.length) { if (previewUrl.value) URL.revokeObjectURL(previewUrl.value); previewUrl.value = URL.createObjectURL(f[0]); result.value = null } }
+function handleDrop(e: DragEvent) { const f = e.dataTransfer?.files; if (f?.length && f[0].type.startsWith('image/')) { if (previewUrl.value) URL.revokeObjectURL(previewUrl.value); previewUrl.value = URL.createObjectURL(f[0]); result.value = null } }
+function reset() { if (previewUrl.value) URL.revokeObjectURL(previewUrl.value); previewUrl.value = ''; result.value = null; copied.value = false }
 function copyResult() { if (result.value) { const t = result.value.char + ' - ' + result.value.meaning + ' (' + result.value.type + ', ' + result.value.confidence + '%)'; navigator.clipboard?.writeText(t).then(() => { copied.value = true; setTimeout(() => copied.value = false, 2000) }).catch(() => { const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); copied.value = true; setTimeout(() => copied.value = false, 2000) }) } }
+onUnmounted(() => { if (recogTimer) clearTimeout(recogTimer); if (previewUrl.value) URL.revokeObjectURL(previewUrl.value) })
 function startRecognize() {
   recognizing.value = true; result.value = null
-  setTimeout(() => {
+  recogTimer = setTimeout(() => {
     const c = [{ char: '日', meaning: '太阳、白天、日期', type: '象形字', confidence: 96.5 },{ char: '月', meaning: '月亮、月份、夜晚', type: '象形字', confidence: 94.2 },{ char: '人', meaning: '人类、人们', type: '象形字', confidence: 97.8 },{ char: '大', meaning: '大的、伟大', type: '象形字', confidence: 93.1 }]
     result.value = c[Math.floor(Math.random() * c.length)]; recognizing.value = false
-  }, 1800)
+  }, 1800) as unknown as number
 }
 </script>
 

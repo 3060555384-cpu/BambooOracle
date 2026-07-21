@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 const search = ref('')
 const selected = ref<null | typeof chars[0]>(null)
 const selectedCat = ref('全部')
@@ -69,6 +69,9 @@ const chars = [
   { char: '\u4E2D', meaning: '中 / 中央', category: '指事字', desc: '一竖贯穿圆圈中部，表示正中。卜辞中用作中间、中等义，亦为族名和地名。' },
   { char: '\u98DF', meaning: '食 / 食物', category: '会意字', desc: '上为口，下为盛食物的器皿。卜辞中用作食物、食用、日食月食等义。' },
 ]
+function onKeydown(e: KeyboardEvent) { if (e.key === 'Escape' && selected.value) { selected.value = null } }
+onMounted(() => { document.addEventListener('keydown', onKeydown) })
+onUnmounted(() => { document.removeEventListener('keydown', onKeydown) })
 const filteredChars = computed(() => {
   let result = chars
   if (selectedCat.value !== '全部') result = result.filter(c => c.category === selectedCat.value)

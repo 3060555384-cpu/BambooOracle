@@ -52,11 +52,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 const year = new Date().getFullYear()
 const menuOpen = ref(false)
 const showTop = ref(false)
 function onScroll() { showTop.value = window.scrollY > 300 }
 function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }) }
+const router = useRouter()
+router.afterEach(() => { menuOpen.value = false })
 onMounted(() => { window.addEventListener('scroll', onScroll, { passive: true }) })
 onUnmounted(() => { window.removeEventListener('scroll', onScroll) })
 </script>

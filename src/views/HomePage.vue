@@ -91,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
 
 const featRef = ref<HTMLElement>()
 const dailyRef = ref<HTMLElement>()
@@ -129,7 +129,7 @@ const wd = ['日','一','二','三','四','五','六']
 const t = new Date()
 const todayStr = computed(() => {
   const y = t.getFullYear(); const m = t.getMonth()+1; const d = t.getDate(); const w = wd[t.getDay()]
-  return '农历  公元'+y+'年'+m+'月'+d+'日  星期'+w
+  return '公元'+y+'年'+m+'月'+d+'日  星期'+w
 })
 
 const dc = [
@@ -145,7 +145,7 @@ const dailyWord = dc[t.getDay() % dc.length]
 
 // 数字递增动画
 function countUp(stat: { target: number; counting: string }, duration: number) {
-  const isPercent = String(stat.target).includes('6') // 95.6 hack
+  const isPercent = !Number.isInteger(stat.target)
   const target = stat.target
   const startTime = performance.now()
   function tick(now: number) {
@@ -200,6 +200,11 @@ onMounted(() => {
   if (dailyRef.value) observer.observe(dailyRef.value)
   if (statsRef.value) observer.observe(statsRef.value)
   if (quoteRef.value) observer.observe(quoteRef.value)
+
+  onUnmounted(() => {
+    observer.disconnect()
+    clearTimeout(typeTimer.value)
+  })
 })
 </script>
 
