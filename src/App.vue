@@ -96,6 +96,8 @@ const showUserMenu = ref(false)
 const user = ref<any>(null)
 const searchQuery = ref('')
 const searchFocused = ref(false)
+const inkCanvas = ref<HTMLCanvasElement>()
+const showTop = ref(false)
 
 function checkAuth() {
   const stored = localStorage.getItem('bamboooracle_user')
@@ -119,67 +121,78 @@ function logout() {
   router.push('/')
 }
 
-// ====== 水墨晕染跟随 ======
-const inkCanvas = ref<HTMLCanvasElement>()
-const showTop = ref(false)
-
-interface InkParticle { x: number; y: number; vx: number; vy: number; size: number; alpha: number; life: number; maxLife: number; color: string }
-let inkParticles: InkParticle[] = []
-let inkRAF = 0
+// ====== 银杏叶拖尾跟随 ======
+interface LeafParticle { x: number; y: number; vx: number; vy: number; rot: number; vr: number; size: number; alpha: number; life: number; maxLife: number; hue: number }
+let leafParticles: LeafParticle[] = []
+let leafRAF = 0
 let mouseX = -200; let mouseY = -200
 let prevX = -200; let prevY = -200
-let spawnTimer = 0
+let leafSpawnCooldown = 0
 
-const inkColors = [
-  '26,26,26',
-  '58,58,58',
-  '90,90,90',
-  '184,134,11',
-  '196,30,30',
-]
-
-function drawInkParticle(ctx: CanvasRenderingContext2D, p: InkParticle) {
+function drawLeaf(ctx: CanvasRenderingContext2D, p: LeafParticle) {
   ctx.save()
+  ctx.translate(p.x, p.y)
+  ctx.rotate(p.rot)
   ctx.globalAlpha = p.alpha
+  const s = p.size
 
-  const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size)
-  gradient.addColorStop(0, 'rgba(' + p.color + ',0.6)')
-  gradient.addColorStop(0.5, 'rgba(' + p.color + ',0.2)')
-  gradient.addColorStop(1, 'rgba(' + p.color + ',0)')
+  // 银杏扇形叶片
+  const grad = ctx.createLinearGradient(0, -s, 0, s)
+  grad.addColorStop(0, 'rgba(212,175,55,0.85)')
+  grad.addColorStop(0.3, 'rgba(201,169,110,0.9)')
+  grad.addColorStop(0.7, 'rgba(184,134,11,0.8)')
+  grad.addColorStop(1, 'rgba(160,110,20,0.6)')
 
-  ctx.fillStyle = gradient
   ctx.beginPath()
-  ctx.arc(p.x, p.y, p.size * 1.5, 0, Math.PI * 2)
+  ctx.moveTo(0, s * 0.5)
+  ctx.bezierCurveTo(-s * 0.7, s * 0.08, -s * 0.6, -s * 0.7, 0, -s * 0.85)
+  ctx.bezierCurveTo(s * 0.6, -s * 0.7, s * 0.7, s * 0.08, 0, s * 0.5)
+  // 缺口
+  ctx.moveTo(0, -s * 0.25)
+  ctx.bezierCurveTo(s * 0.15, s * 0.02, s * 0.15, s * 0.15, 0, -s * 0.4)
+  ctx.bezierCurveTo(-s * 0.15, s * 0.15, -s * 0.15, s * 0.02, 0, -s * 0.25)
+  ctx.fillStyle = grad
   ctx.fill()
 
-  ctx.fillStyle = 'rgba(' + p.color + ',0.8)'
+  // 叶脉
   ctx.beginPath()
-  ctx.arc(p.x, p.y, p.size * 0.3, 0, Math.PI * 2)
-  ctx.fill()
+  ctx.moveTo(0, -s * 0.7)
+  ctx.lineTo(0, s * 0.5)
+  ctx.strokeStyle = 'rgba(160,120,40,0.25)'
+  ctx.lineWidth = 0.4
+  ctx.stroke()
+
+  // 叶柄
+  ctx.beginPath()
+  ctx.moveTo(0, s * 0.5)
+  ctx.lineTo(0, s * 0.75)
+  ctx.strokeStyle = 'rgba(140,100,30,0.5)'
+  ctx.lineWidth = 0.7
+  ctx.stroke()
 
   ctx.restore()
 }
 
-function spawnInkBurst(x: number, y: number, count: number) {
+function spawnLeaves(x: number, y: number, count: number) {
   for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2
-    const speed = 0.3 + Math.random() * 1.5
-    const colorIdx = Math.random() < 0.08 ? 3 : (Math.random() < 0.05 ? 4 : Math.floor(Math.random() * 3))
-    inkParticles.push({
-      x, y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      size: 1.5 + Math.random() * 5,
-      alpha: 0.5 + Math.random() * 0.4,
+    leafParticles.push({
+      x: x + (Math.random() - 0.5) * 8,
+      y: y + (Math.random() - 0.5) * 6,
+      vx: (Math.random() - 0.5) * 0.6,
+      vy: 0.15 + Math.random() * 0.5,
+      rot: Math.random() * Math.PI * 2,
+      vr: (Math.random() - 0.5) * 0.03,
+      size: 6 + Math.random() * 8,
+      alpha: 0.85,
       life: 0,
-      maxLife: 40 + Math.random() * 50,
-      color: inkColors[colorIdx]
+      maxLife: 50 + Math.random() * 60,
+      hue: 40 + Math.random() * 15
     })
   }
-  if (inkParticles.length > 150) inkParticles.splice(0, inkParticles.length - 150)
+  if (leafParticles.length > 100) leafParticles.splice(0, leafParticles.length - 100)
 }
 
-function animateInk() {
+function animateLeaves() {
   const canvas = inkCanvas.value
   if (!canvas) return
   const ctx = canvas.getContext('2d')
@@ -187,46 +200,51 @@ function animateInk() {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height)
 
+  // 鼠标移动时生成叶子
   if (mouseX > -100 && mouseY > -100) {
-    spawnTimer++
+    leafSpawnCooldown--
     const dist = Math.hypot(mouseX - prevX, mouseY - prevY)
-    const spawnRate = Math.min(dist * 0.5, 4)
-    if (spawnTimer >= 1) {
-      spawnInkBurst(mouseX, mouseY, Math.floor(spawnRate))
-      spawnTimer = 0
+    if (leafSpawnCooldown <= 0 && dist > 3) {
+      spawnLeaves(mouseX, mouseY, 1)
+      leafSpawnCooldown = 2
     }
-    
-    if (dist > 12) {
-      const steps = Math.floor(dist / 8)
+
+    // 长距离移动时补点（拖尾）
+    if (dist > 20) {
+      const steps = Math.floor(dist / 12)
       for (let s = 1; s <= steps; s++) {
         const t = s / (steps + 1)
-        const ix = prevX + (mouseX - prevX) * t
-        const iy = prevY + (mouseY - prevY) * t
-        spawnInkBurst(ix, iy, 1)
+        spawnLeaves(
+          prevX + (mouseX - prevX) * t,
+          prevY + (mouseY - prevY) * t,
+          1
+        )
       }
     }
     prevX = mouseX; prevY = mouseY
   }
 
-  for (let i = inkParticles.length - 1; i >= 0; i--) {
-    const p = inkParticles[i]
+  // 更新与绘制
+  for (let i = leafParticles.length - 1; i >= 0; i--) {
+    const p = leafParticles[i]
     p.x += p.vx
     p.y += p.vy
-    p.vx *= 0.96
-    p.vy *= 0.96
+    p.vx += (Math.random() - 0.5) * 0.04
+    p.vy *= 0.998
+    p.rot += p.vr
     p.life++
     const progress = p.life / p.maxLife
-    p.alpha = 0.6 * (1 - progress) * (1 - progress)
-    p.size *= 0.998
+    p.alpha = 0.8 * (1 - progress * progress)
+    p.size *= 0.9995
 
-    drawInkParticle(ctx, p)
+    drawLeaf(ctx, p)
 
-    if (p.life >= p.maxLife || p.alpha < 0.01) {
-      inkParticles.splice(i, 1)
+    if (p.life >= p.maxLife || p.alpha < 0.02) {
+      leafParticles.splice(i, 1)
     }
   }
 
-  inkRAF = requestAnimationFrame(animateInk)
+  leafRAF = requestAnimationFrame(animateLeaves)
 }
 
 function onMouseMove(e: MouseEvent) {
@@ -246,14 +264,14 @@ function initInk() {
   resizeInkCanvas()
   window.addEventListener('mousemove', onMouseMove, { passive: true })
   window.addEventListener('resize', resizeInkCanvas)
-  inkRAF = requestAnimationFrame(animateInk)
+  leafRAF = requestAnimationFrame(animateLeaves)
 }
 
 function cleanupInk() {
   window.removeEventListener('mousemove', onMouseMove)
   window.removeEventListener('resize', resizeInkCanvas)
-  cancelAnimationFrame(inkRAF)
-  inkParticles = []
+  cancelAnimationFrame(leafRAF)
+  leafParticles = []
 }
 
 function onScroll() { showTop.value = window.scrollY > 300 }
