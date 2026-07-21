@@ -223,9 +223,9 @@ onUnmounted(() => {
 .result-card{background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-lg);padding:28px 28px 28px 20px;display:flex;gap:24px;align-items:center;box-shadow:var(--shadow);margin-bottom:12px;opacity:0;animation:cardSlide .5s ease forwards}
 @keyframes cardSlide{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:translateY(0)}}
 .result-card:hover{box-shadow:var(--shadow-md)}
-.result-rank{width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:var(--ink);color:var(--paper-light);font-size:.8rem;font-weight:bold;border-radius:50%;flex-shrink:0}
+.result-rank{width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 30% 30%,rgba(139,119,80,.1) 0%,transparent 50%),linear-gradient(135deg,#e6d8c0,#dfd0b8);color:#3d3522;font-size:.8rem;font-weight:bold;border-radius:50%;flex-shrink:0;border:1px solid var(--gold-pale);box-shadow:inset 0 1px 2px rgba(0,0,0,.1),0 2px 4px var(--shadow);text-shadow:1px 1px 0 rgba(255,255,255,.3)}
 .result-char-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0;min-width:90px}
-.result-char{font-family:'KaiTi','STKaiti',serif;font-size:60px;color:var(--ink);line-height:1}
+.result-char{font-family:'KaiTi','STKaiti',serif;font-size:60px;color:#3d3522;line-height:1;background:radial-gradient(circle at 20% 30%,rgba(139,119,80,.07) 0%,transparent 40%),radial-gradient(circle at 80% 70%,rgba(139,119,80,.05) 0%,transparent 35%),linear-gradient(135deg,#f5ede0,#ece0cc 30%,#e6d8c0 60%,#f0e5d5);border:2px solid var(--gold-pale);border-radius:8px;box-shadow:inset 0 2px 4px rgba(0,0,0,.1),inset 0 -1px 0 rgba(255,255,255,.6),0 3px 8px var(--shadow);text-shadow:1px 1px 0 rgba(255,255,255,.4),-1px -1px 0 rgba(0,0,0,.15);padding:8px 16px;display:inline-block}
 .result-stamp{font-size:11px;color:var(--cinnabar-light);border:1px solid var(--cinnabar-light);padding:2px 10px;font-family:'KaiTi','STKaiti',serif;letter-spacing:2px}
 .result-body{flex:1;min-width:0}
 .result-row{display:flex;align-items:center;padding:6px 0;border-bottom:1px solid var(--paper);gap:12px}
