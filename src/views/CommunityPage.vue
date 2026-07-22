@@ -187,15 +187,35 @@ function sharePost(post: Post) {
 }
 
 async function loadUser() {
-  const { data } = await supabase.auth.getSession()
-  if (data.session?.user) {
-    const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', data.session.user.id).single()
-    user.value = {
-      id: data.session.user.id,
-      email: data.session.user.email,
-      nickname: profile?.nickname || data.session.user.user_metadata?.nickname || '甲骨学者'
+  try {
+    const { data } = await supabase.auth.getSession()
+    if (data.session?.user) {
+      const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', data.session.user.id).single()
+      user.value = {
+        id: data.session.user.id,
+        email: data.session.user.email,
+        nickname: profile?.nickname || data.session.user.user_metadata?.nickname || '甲骨学者'
+      }
+      return
     }
-  }
+  } catch (e) { /* fallback */ }
+
+  try {
+    const key = 'sb-pbaxbuscxhtfrvazwbtw-auth-token'
+    const raw = localStorage.getItem(key)
+    if (raw) {
+      const session = JSON.parse(raw)
+      if (session?.user) {
+        const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', session.user.id).single()
+        user.value = {
+          id: session.user.id,
+          email: session.user.email,
+          nickname: profile?.nickname || session.user.user_metadata?.nickname || '甲骨学者'
+        }
+        return
+      }
+    }
+  } catch (e) { /* ignore */ }
 }
 
 onMounted(() => {

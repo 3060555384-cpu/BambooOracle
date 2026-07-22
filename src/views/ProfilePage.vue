@@ -252,17 +252,41 @@ async function handleLogout() {
 }
 
 async function loadUser() {
-  const { data } = await supabase.auth.getSession()
-  if (data.session?.user) {
-    const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', data.session.user.id).single()
-    user.value = {
-      id: data.session.user.id,
-      email: data.session.user.email,
-      nickname: profile?.nickname || data.session.user.user_metadata?.nickname || '甲骨学者'
+  // 先用 SDK 获取 session，如果失败则从 localStorage 兜底
+  try {
+    const { data, error } = await supabase.auth.getSession()
+    if (!error && data.session?.user) {
+      const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', data.session.user.id).single()
+      user.value = {
+        id: data.session.user.id,
+        email: data.session.user.email,
+        nickname: profile?.nickname || data.session.user.user_metadata?.nickname || '甲骨学者'
+      }
+      loadBookmarks()
+      loadHistory()
+      return
     }
-    loadBookmarks()
-    loadHistory()
-  }
+  } catch (e) { /* fallback */ }
+
+  // 从 localStorage 读取 Supabase 缓存的 session
+  try {
+    const key = 'sb-pbaxbuscxhtfrvazwbtw-auth-token'
+    const raw = localStorage.getItem(key)
+    if (raw) {
+      const session = JSON.parse(raw)
+      if (session?.user) {
+        const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', session.user.id).single()
+        user.value = {
+          id: session.user.id,
+          email: session.user.email,
+          nickname: profile?.nickname || session.user.user_metadata?.nickname || '甲骨学者'
+        }
+        loadBookmarks()
+        loadHistory()
+        return
+      }
+    }
+  } catch (e) { /* ignore */ }
 }
 
 async function handleAuthChange() {
