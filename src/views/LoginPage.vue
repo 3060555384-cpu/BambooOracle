@@ -20,9 +20,9 @@
         </div>
         <p v-if="errMsg" class="auth-error">{{ errMsg }}</p>
         <p v-if="succMsg" class="auth-success">{{ succMsg }}</p>
-        <button type="submit" class="btn-ink auth-btn" :disabled="!valid">{{ isRegister ? '创建账号' : '登录' }}</button>
+        <button type="submit" class="btn-ink auth-btn" :disabled="loading || !valid">{{ loading ? '处理中...' : (isRegister ? '创建账号' : '登录') }}</button>
       </form>
-      <p class="auth-toggle"> 
+      <p class="auth-toggle">
         <span v-if="!isRegister">尚无账号？<a href="#" @click.prevent="switchMode">立即注册</a></span>
         <span v-else>已有账号？<a href="#" @click.prevent="switchMode">去登录</a></span>
       </p>
@@ -33,12 +33,14 @@
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { supabase } from '../lib/supabase'
 
 const router = useRouter()
 const route = useRoute()
 const isRegister = ref(false)
 const errMsg = ref('')
 const succMsg = ref('')
+const loading = ref(false)
 const form = reactive({ nickname: '', email: '', password: '' })
 const valid = computed(() => {
   const e = /^[^\s@]+@[^\s@]+$/.test(form.email)
@@ -56,21 +58,50 @@ function switchMode() {
   form.password = ''
 }
 
-function handleSubmit() {
-  if (!valid.value) return
+async function handleSubmit() {
+  if (!valid.value || loading.value) return
   errMsg.value = ''
   succMsg.value = ''
+  loading.value = true
 
-  // Placeholder - will be replaced with Supabase auth
-  const mockUser = { email: form.email, nickname: form.nickname || form.email.split('@')[0] }
-  localStorage.setItem('bamboooracle_user', JSON.stringify(mockUser))
-  window.dispatchEvent(new Event('auth-change'))
-
-  succMsg.value = isRegister.value ? '注册成功，正在跳转...' : '登录成功，正在跳转...'
-  setTimeout(() => {
-    const redirect = (route.query.redirect as string) || '/'
-    router.push(redirect)
-  }, 800)
+  try {
+    if (isRegister.value) {
+      // 注册
+      const { data, error } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: {
+          data: { nickname: form.nickname || form.email.split('@')[0] }
+        }
+      })
+      if (error) throw error
+      if (data.user) {
+        // 更新 profiles 表昵称
+        await supabase.from('profiles').update({ nickname: form.nickname }).eq('id', data.user.id)
+      }
+      succMsg.value = '注册成功！请查收邮箱验证链接，或直接登录。'
+      setTimeout(() => switchMode(), 2000)
+    } else {
+      // 登录
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password
+      })
+      if (error) throw error
+      if (data.user) {
+        succMsg.value = '登录成功，正在跳转...'
+        window.dispatchEvent(new Event('auth-change'))
+        setTimeout(() => {
+          const redirect = (route.query.redirect as string) || '/'
+          router.push(redirect)
+        }, 500)
+      }
+    }
+  } catch (error: any) {
+    errMsg.value = error.message || '操作失败，请重试'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

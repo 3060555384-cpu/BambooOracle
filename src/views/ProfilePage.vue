@@ -144,6 +144,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { supabase } from '../lib/supabase'
 
 const router = useRouter()
 
@@ -171,12 +172,12 @@ function startEditNick() {
   })
 }
 
-function saveNick() {
+async function saveNick() {
   if (!editingNick.value) return
   const val = nickDraft.value.trim()
   if (val && user.value) {
     user.value.nickname = val
-    localStorage.setItem('bamboooracle_user', JSON.stringify(user.value))
+    await supabase.from('profiles').update({ nickname: val }).eq('id', user.value.id)
   }
   editingNick.value = false
 }
@@ -194,33 +195,29 @@ const tabs = [
 const activeTab = ref('bookmarks')
 
 // 收藏数据
-const bookmarks = ref<{ char: string; meaning: string }[]>([])
+const bookmarks = ref<{ char: string; meaning: string; category: string }[]>([])
 
 // 历史数据
 const historyItems = ref<{ chars: string; time: string }[]>([])
 
-function loadBookmarks() {
-  const raw = localStorage.getItem('bamboooracle_bookmarks')
-  if (raw) {
-    try {
-      bookmarks.value = JSON.parse(raw)
-    } catch (e) {
-      bookmarks.value = []
-    }
-  }
+async function loadBookmarks() {
+  if (!user.value) return
+  const { data } = await supabase.from('bookmarks').select('*').eq('user_id', user.value.id).order('created_at', { ascending: false })
+  if (data) bookmarks.value = data
 }
 
-function loadHistory() {
-  const raw = localStorage.getItem('bamboooracle_history')
-  if (raw) {
-    try {
-      historyItems.value = JSON.parse(raw)
-    } catch (e) {
-      historyItems.value = []
-    }
+async function loadHistory() {
+  if (!user.value) {
+    historyItems.value = []
+    return
   }
-  // 如果没有历史记录，使用 mock 数据
-  if (!historyItems.value || historyItems.value.length === 0) {
+  const { data } = await supabase.from('recognition_history').select('*').eq('user_id', user.value.id).order('created_at', { ascending: false })
+  if (data && data.length > 0) {
+    historyItems.value = data.map((d: any) => ({
+      chars: d.chars,
+      time: new Date(d.created_at).toLocaleString('zh-CN')
+    }))
+  } else {
     historyItems.value = [
       { chars: '日 月 山', time: '2026-07-20 15:42' },
       { chars: '雨 水', time: '2026-07-18 09:15' },
@@ -230,54 +227,50 @@ function loadHistory() {
   }
 }
 
-function clearBookmarks() {
+async function clearBookmarks() {
   if (!confirm('确定要清空所有收藏吗？此操作不可撤销。')) return
+  await supabase.from('bookmarks').delete().eq('user_id', user.value.id)
   bookmarks.value = []
-  localStorage.removeItem('bamboooracle_bookmarks')
 }
 
-function clearHistory() {
+async function clearHistory() {
   if (!confirm('确定要清空所有识别历史吗？此操作不可撤销。')) return
+  await supabase.from('recognition_history').delete().eq('user_id', user.value.id)
   historyItems.value = []
-  localStorage.removeItem('bamboooracle_history')
 }
 
 function goToDictionary() {
   router.push('/dictionary')
 }
 
-function handleLogout() {
+async function handleLogout() {
   if (!confirm('确定要退出登录吗？')) return
-  localStorage.removeItem('bamboooracle_user')
+  await supabase.auth.signOut()
   user.value = null
   window.dispatchEvent(new Event('auth-change'))
   router.push('/')
 }
 
-function handleAuthChange() {
-  const stored = localStorage.getItem('bamboooracle_user')
-  if (stored) {
-    try {
-      user.value = JSON.parse(stored)
-    } catch (e) {
-      user.value = null
+async function loadUser() {
+  const { data } = await supabase.auth.getSession()
+  if (data.session?.user) {
+    const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', data.session.user.id).single()
+    user.value = {
+      id: data.session.user.id,
+      email: data.session.user.email,
+      nickname: profile?.nickname || data.session.user.user_metadata?.nickname || '甲骨学者'
     }
-  } else {
-    user.value = null
+    loadBookmarks()
+    loadHistory()
   }
 }
 
+async function handleAuthChange() {
+  await loadUser()
+}
+
 onMounted(() => {
-  const stored = localStorage.getItem('bamboooracle_user')
-  if (stored) {
-    try {
-      user.value = JSON.parse(stored)
-    } catch (e) {
-      user.value = null
-    }
-  }
-  loadBookmarks()
-  loadHistory()
+  loadUser()
   window.addEventListener('auth-change', handleAuthChange)
 })
 </script>

@@ -8,7 +8,7 @@
     <div class="tag-cloud">
       <button v-for="t in allTags" :key="t" class="tag-pill" :class="{ active: selTag === t }" @click="selTag = selTag === t ? '' : t">{{ t }}</button>
     </div>
-    <div class="post-form">
+    <div v-if="user" class="post-form">
       <div class="form-row">
         <select v-model="newTag" class="form-tag-select">
           <option v-for="t in allTags" :key="t" :value="t">{{ t }}</option>
@@ -17,11 +17,15 @@
       <textarea v-model="newPost" class="post-input" placeholder="分享你发现的甲骨文知识或有趣文字..." rows="3"></textarea>
       <div class="form-footer">
         <span class="form-hint" :class="{ over: newPost.length > 500 }">{{ newPost.length }}/500</span>
-        <button class="btn-ink" @click="submitPost" :disabled="!newPost.trim() || newPost.length > 500">发布</button>
+        <button class="btn-ink" @click="submitPost" :disabled="!newPost.trim() || newPost.length > 500 || posting">发布</button>
       </div>
     </div>
+    <div v-else class="post-form login-hint">
+      <p>请先<a href="/login">登录</a>后发帖交流</p>
+    </div>
     <div class="post-list">
-      <div v-if="filteredPosts.length === 0 && selTag" class="empty-state">
+      <p v-if="loading" class="empty-state">加载中...</p>
+      <div v-else-if="filteredPosts.length === 0 && selTag" class="empty-state">
         <p>暂无「{{ selTag }}」标签的帖子</p>
       </div>
       <article v-for="post in filteredPosts" :key="post.id" class="post-card">
@@ -30,35 +34,36 @@
             <span class="post-avatar">&#128100;</span>
             <div>
               <span class="post-author">{{ post.author }}</span>
-              <span class="post-time">{{ post.time }}</span>
+              <span class="post-time">{{ formatTime(post.created_at) }}</span>
             </div>
           </div>
           <div class="post-head-right">
             <span class="post-tag" @click="selTag = post.tag">{{ post.tag }}</span>
-            <button v-if="post.author === '我'" class="post-del" @click="deletePost(post.id)" title="删除">&times;</button>
+            <button v-if="user?.id === post.user_id" class="post-del" @click="deletePost(post.id)" title="删除">&times;</button>
           </div>
         </div>
         <p class="post-body">{{ post.content }}</p>
         <div class="post-foot">
           <button @click="post.liked = !post.liked" :class="{ liked: post.liked }">
             <span class="heart-icon">{{ post.liked ? '\u2764' : '\u2661' }}</span>
-            {{ post.likes + (post.liked ? 1 : 0) }}
+            {{ (post.likes || 0) + (post.liked ? 1 : 0) }}
           </button>
           <button @click="toggleComments(post)">
-            &#128172; {{ post.comments }}
+            &#128172; {{ post._comments?.length || 0 }}
           </button>
           <button @click="sharePost(post)">&#128206; {{ post.shared ? '已分享' : '分享' }}</button>
         </div>
-        <div v-if="post.showComments" class="comments-section">
-          <div v-for="c in post.mockComments" :key="c.id" class="comment-item">
+        <div v-if="post._showComments" class="comments-section">
+          <div v-for="c in post._comments" :key="c.id" class="comment-item">
             <span class="comment-author">{{ c.author }}</span>
-            <span class="comment-text">{{ c.text }}</span>
-            <span class="comment-time">{{ c.time }}</span>
+            <span class="comment-text">{{ c.content }}</span>
+            <span class="comment-time">{{ formatTime(c.created_at) }}</span>
           </div>
-          <div class="comment-form">
-            <input v-model="post.replyText" type="text" placeholder="写下你的看法..." class="comment-input" @keyup.enter="addComment(post)" />
-            <button class="btn-ink comment-btn" @click="addComment(post)" :disabled="!post.replyText?.trim()">回复</button>
+          <div v-if="user" class="comment-form">
+            <input v-model="post._replyText" type="text" placeholder="写下你的看法..." class="comment-input" @keyup.enter="addComment(post)" />
+            <button class="btn-ink comment-btn" @click="addComment(post)" :disabled="!post._replyText?.trim()">回复</button>
           </div>
+          <p v-else class="empty-state" style="padding:12px;font-size:.8rem">请<a href="/login">登录</a>后发表评论</p>
         </div>
       </article>
     </div>
@@ -66,40 +71,103 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-interface Post { id: number; author: string; time: string; tag: string; content: string; likes: number; liked: boolean; shared: boolean; comments: number; showComments: boolean; replyText: string; mockComments: { id: number; author: string; text: string; time: string }[] }
+import { ref, computed, onMounted } from 'vue'
+import { supabase } from '../lib/supabase'
+
+interface Comment { id: number; post_id: number; user_id: string; author: string; content: string; created_at: string }
+interface Post { id: number; user_id: string; author: string; tag: string; content: string; likes: number; liked: boolean; shared: boolean; created_at: string; _comments: Comment[]; _showComments: boolean; _replyText: string }
+
+const user = ref<any>(null)
 const selTag = ref('')
 const newPost = ref('')
 const newTag = ref('甲骨趣谈')
-const posts = ref<Post[]>([
-  { id: 1, author: '殷墟学人', time: '2小时前', tag: '甲骨趣谈', content: '今日发现"雨"字的甲骨文格外传神——上方横线似云，下方数点如雨滴洒落。三千年前的殷人，便以如此简洁的笔画描摹天地万象，令人叹服。', likes: 24, liked: false, shared: false, comments: 2, showComments: false, replyText: '', mockComments: [{ id: 101, author: '古文字研究者', text: '"雨"字的构形确实精妙，甲骨文中的象形字往往以最少的笔画捕捉事物的本质特征。', time: '1小时前' }, { id: 102, author: '墨甲行者', text: '好发现！对比一下"水"字也很有意思，都是用点和线来表意。', time: '30分钟前' }] },
-  { id: 2, author: '古文字研究者', time: '5小时前', tag: '学术动态', content: '分享一则好消息：基于深度学习的甲骨文识别模型最新进展——在OBC306数据集上Top-1准确率已达95%以上，个别高频字接近99%。传统考释与现代AI的碰撞，精彩。', likes: 56, liked: false, shared: false, comments: 2, showComments: false, replyText: '', mockComments: [{ id: 201, author: '殷墟学人', text: '能分享一下模型和论文链接吗？我们课题组也在做这个方向。', time: '3小时前' }, { id: 202, author: '竹下问甲', text: '这也是我们平台正在接入的技术方向，敬请期待！', time: '2小时前' }] },
-  { id: 3, author: '文化守望者', time: '昨天', tag: '字形探源', content: '"人"字的演变颇具意味：甲骨文中作侧立人形，有头、身、臂、腿，栩栩如生。至金文渐简，小篆定型，终成今日楷书"人"字。一撇一捺，千年未断。', likes: 38, liked: false, shared: false, comments: 1, showComments: false, replyText: '', mockComments: [{ id: 301, author: '墨甲行者', text: '每个汉字的背后都是一部微型文化史，感谢分享。', time: '12小时前' }] },
-  { id: 4, author: '竹下问甲', time: '3天前', tag: '平台公告', content: '欢迎来到竹下问甲！本平台致力于以AI技术助力甲骨文识别与考释。识甲功能尚在优化中，欢迎上传拓片图片测试，并留下您的宝贵建议。', likes: 89, liked: false, shared: false, comments: 2, showComments: false, replyText: '', mockComments: [{ id: 401, author: '殷墟学人', text: '平台很漂亮！期待识甲功能上线。', time: '2天前' }, { id: 402, author: '文化守望者', text: '国风设计太赞了，加油！', time: '1天前' }] },
-])
+const posting = ref(false)
+const loading = ref(true)
+const posts = ref<Post[]>([])
 const allTags = ['甲骨趣谈', '学术动态', '字形探源', '平台公告']
-const filteredPosts = computed(() => selTag.value ? posts.value.filter(p => p.tag === selTag.value) : posts.value)
-let nextId = 5
-let nextCid = 500
 
-function submitPost() {
-  if (!newPost.value.trim() || newPost.value.length > 500) return
-  posts.value.unshift({
-    id: nextId++, author: '我', time: '刚刚', tag: newTag.value, content: newPost.value,
-    likes: 0, liked: false, shared: false, comments: 0, showComments: false,
-    replyText: '', mockComments: []
-  })
-  newPost.value = ''
+function formatTime(ts: string) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  const now = new Date()
+  const diff = now.getTime() - d.getTime()
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前'
+  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前'
+  if (diff < 604800000) return Math.floor(diff / 86400000) + '天前'
+  return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate()
 }
 
-function deletePost(id: number) { posts.value = posts.value.filter(p => p.id !== id) }
-function toggleComments(post: Post) { post.showComments = !post.showComments }
+const filteredPosts = computed(() => selTag.value ? posts.value.filter(p => p.tag === selTag.value) : posts.value)
 
-function addComment(post: Post) {
-  if (!post.replyText?.trim()) return
-  post.mockComments.push({ id: nextCid++, author: '我', text: post.replyText, time: '刚刚' })
-  post.comments++
-  post.replyText = ''
+async function loadPosts() {
+  loading.value = true
+  const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false })
+  if (!error && data) {
+    const postList = data as any[]
+    // 加载每条帖子的评论
+    for (const p of postList) {
+      const { data: comments } = await supabase.from('comments').select('*').eq('post_id', p.id).order('created_at', { ascending: true })
+      p._comments = comments || []
+      p._showComments = false
+      p._replyText = ''
+      p.likes = p.likes || 0
+      p.liked = false
+      p.shared = false
+    }
+    posts.value = postList
+  }
+  loading.value = false
+}
+
+async function submitPost() {
+  if (!newPost.value.trim() || newPost.value.length > 500 || !user.value || posting.value) return
+  posting.value = true
+  const { data, error } = await supabase.from('posts').insert({
+    user_id: user.value.id,
+    author: user.value.nickname || '匿名学者',
+    content: newPost.value,
+    tag: newTag.value
+  }).select().single()
+  if (!error && data) {
+    data._comments = []
+    data._showComments = false
+    data._replyText = ''
+    data.likes = 0
+    data.liked = false
+    data.shared = false
+    posts.value.unshift(data as Post)
+    newPost.value = ''
+  }
+  posting.value = false
+}
+
+async function deletePost(id: number) {
+  if (!confirm('确定删除这条帖子吗？')) return
+  await supabase.from('posts').delete().eq('id', id)
+  posts.value = posts.value.filter(p => p.id !== id)
+}
+
+async function toggleComments(post: Post) {
+  post._showComments = !post._showComments
+  if (post._showComments) {
+    const { data } = await supabase.from('comments').select('*').eq('post_id', post.id).order('created_at', { ascending: true })
+    if (data) post._comments = data
+  }
+}
+
+async function addComment(post: Post) {
+  if (!post._replyText?.trim() || !user.value) return
+  const { data, error } = await supabase.from('comments').insert({
+    post_id: post.id,
+    user_id: user.value.id,
+    author: user.value.nickname || '匿名学者',
+    content: post._replyText
+  }).select().single()
+  if (!error && data) {
+    post._comments.push(data)
+    post._replyText = ''
+  }
 }
 
 function sharePost(post: Post) {
@@ -117,6 +185,23 @@ function sharePost(post: Post) {
     setTimeout(() => post.shared = false, 2000)
   }
 }
+
+async function loadUser() {
+  const { data } = await supabase.auth.getSession()
+  if (data.session?.user) {
+    const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', data.session.user.id).single()
+    user.value = {
+      id: data.session.user.id,
+      email: data.session.user.email,
+      nickname: profile?.nickname || data.session.user.user_metadata?.nickname || '甲骨学者'
+    }
+  }
+}
+
+onMounted(() => {
+  loadUser()
+  loadPosts()
+})
 </script>
 
 <style scoped>
@@ -126,6 +211,9 @@ function sharePost(post: Post) {
 .tag-pill:hover{border-color:var(--gold);color:var(--gold)}
 .tag-pill.active{background:var(--gold);color:#fff;border-color:var(--gold)}
 .post-form{background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:20px;box-shadow:var(--shadow)}
+.login-hint{text-align:center;padding:28px!important}
+.login-hint p{color:var(--ink-wash);font-size:.9rem}
+.login-hint a{color:var(--gold)}
 .form-row{margin-bottom:10px}
 .form-tag-select{padding:6px 12px;border:1px solid var(--paper-dark);border-radius:var(--radius);font-size:.82rem;font-family:inherit;color:var(--ink);outline:none;background:var(--paper-light);cursor:pointer}
 .form-tag-select:focus{border-color:var(--gold)}
@@ -156,7 +244,7 @@ function sharePost(post: Post) {
 .heart-icon{font-size:1rem}
 .comments-section{background:var(--paper);border-radius:var(--radius-md);padding:14px 18px;margin-top:14px;border:1px solid var(--paper-dark)}
 .comment-item{display:flex;align-items:baseline;gap:8px;padding:6px 0;font-size:.85rem;flex-wrap:wrap}
-.comment-item + .comment-item{border-top:1px solid var(--paper-dark);padding-top:10px;margin-top:4px}
+.comment-item+.comment-item{border-top:1px solid var(--paper-dark);padding-top:10px;margin-top:4px}
 .comment-author{color:var(--gold);font-weight:bold;font-size:.8rem;white-space:nowrap}
 .comment-text{color:var(--ink);flex:1;line-height:1.6}
 .comment-time{color:var(--ink-wash);font-size:.7rem;white-space:nowrap}
@@ -165,5 +253,6 @@ function sharePost(post: Post) {
 .comment-input:focus{border-color:var(--gold)}
 .comment-btn{padding:6px 16px!important;font-size:.8rem!important}
 .empty-state{text-align:center;padding:40px 20px;color:var(--ink-wash)}
+.empty-state a{color:var(--gold)}
 @media(max-width:600px){.post-head{flex-direction:column;gap:8px}}
 </style>

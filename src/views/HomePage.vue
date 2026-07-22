@@ -53,6 +53,13 @@
           <div class="daily-char-wrap">
             <span class="daily-char" :class="{ pulse: dailyVisible }">{{ dailyWord.char }}</span>
             <span class="daily-char-seal">甲骨</span>
+            <button class="daily-bookmark-btn"
+              :class="{ bookmarked: isBookmarked(dailyWord.char) }"
+              @click="toggleBookmark(dailyWord)"
+              :title="isBookmarked(dailyWord.char) ? '取消收藏' : '收藏'">
+              <span v-if="isBookmarked(dailyWord.char)" class="heart-full">&#10084;</span>
+              <span v-else class="heart-empty">&#9825;</span>
+            </button>
           </div>
           <div class="daily-body">
             <h3 class="daily-meaning">「{{ dailyWord.char }}」&mdash; {{ dailyWord.meaning }}</h3>
@@ -92,6 +99,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
+import { supabase } from '../lib/supabase'
 
 const featRef = ref<HTMLElement>()
 const dailyRef = ref<HTMLElement>()
@@ -117,6 +125,52 @@ const features = [
 ]
 
 // 统计数据
+
+// 收藏数据
+const bookmarks = ref<Array<{char: string; meaning: string; category: string}>>([])
+
+async function loadBookmarks() {
+  const { data: sess } = await supabase.auth.getSession()
+  if (sess.session?.user) {
+    const { data } = await supabase.from('bookmarks').select('char').eq('user_id', sess.session.user.id)
+    if (data) bookmarks.value = data.map(d => d as {char: string; meaning: string; category: string})
+  }
+}
+
+async function saveBookmark(item: { char: string; meaning: string; category: string }) {
+  const { data: sess } = await supabase.auth.getSession()
+  if (!sess.session?.user) return
+  await supabase.from('bookmarks').insert({
+    user_id: sess.session.user.id,
+    char: item.char,
+    meaning: item.meaning,
+    category: item.category
+  })
+}
+
+async function removeBookmark(char: string) {
+  const { data: sess } = await supabase.auth.getSession()
+  if (!sess.session?.user) return
+  await supabase.from('bookmarks').delete().eq('user_id', sess.session.user.id).eq('char', char)
+}
+
+function isBookmarked(char: string): boolean {
+  return bookmarks.value.some(b => b.char === char)
+}
+
+async function toggleBookmark(item: { char: string; meaning: string; category: string }) {
+  const { data: sess } = await supabase.auth.getSession()
+  if (!sess.session?.user) { alert('请先登录'); return }
+  const idx = bookmarks.value.findIndex(b => b.char === item.char)
+  if (idx >= 0) {
+    bookmarks.value.splice(idx, 1)
+    await removeBookmark(item.char)
+  } else {
+    bookmarks.value.push({ char: item.char, meaning: item.meaning, category: item.category })
+    await saveBookmark({ char: item.char, meaning: item.meaning, category: item.category })
+  }
+}
+
 const stats = reactive([
   { label: '已收录甲骨文单字', target: 4500, counting: '0' },
   { label: '已释读文字', target: 1200, counting: '0' },
@@ -164,6 +218,7 @@ function countUp(stat: { target: number; counting: string }, duration: number) {
 
 // IntersectionObserver 滚动动画
 onMounted(() => {
+  loadBookmarks()
   // 打字机效果
   let i = 0
   const type = () => {
@@ -269,6 +324,11 @@ onMounted(() => {
 .daily-char.pulse{animation:charPulse 1s ease-out}
 @keyframes charPulse{0%{transform:scale(.5);opacity:0;color:var(--cinnabar)}60%{transform:scale(1.05)}100%{transform:scale(1);opacity:1;color:#3d3522}}
 .daily-char-seal{font-size:12px;color:var(--cinnabar-light);border:1px solid var(--cinnabar-light);padding:2px 10px;font-family:'KaiTi','STKaiti',serif;letter-spacing:2px;transform:rotate(-3deg)}
+.daily-bookmark-btn{background:none;border:none;font-size:1.2rem;cursor:pointer;padding:2px 6px;transition:all .3s;margin-top:4px}
+.daily-bookmark-btn .heart-empty{color:var(--ink-wash);transition:all .3s}
+.daily-bookmark-btn .heart-full{color:var(--cinnabar);transition:all .3s}
+.daily-bookmark-btn:hover .heart-empty{color:var(--cinnabar-light)}
+.daily-bookmark-btn:hover .heart-full{transform:scale(1.2)}
 .daily-meaning{font-family:'KaiTi','STKaiti',serif;font-size:1.2rem;color:var(--ink);letter-spacing:2px;margin-bottom:12px}
 .daily-desc{color:var(--ink-wash);font-size:.95rem;line-height:1.9;margin-bottom:16px}
 .daily-tags{display:flex;gap:8px;flex-wrap:wrap}

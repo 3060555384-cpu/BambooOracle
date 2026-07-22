@@ -107,6 +107,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { supabase } from '../lib/supabase'
 import { useRoute } from 'vue-router'
 
 const chars = [
@@ -998,29 +999,46 @@ function closeDetail() { selected.value = null }
 
 const bookmarks = ref<Array<{char: string; meaning: string; category: string}>>([])
 
-function loadBookmarks() {
-  try {
-    const raw = localStorage.getItem('bamboooracle_bookmarks')
-    if (raw) bookmarks.value = JSON.parse(raw)
-  } catch (e) { bookmarks.value = [] }
+async function loadBookmarks() {
+  const { data: sess } = await supabase.auth.getSession()
+  if (sess.session?.user) {
+    const { data } = await supabase.from('bookmarks').select('*').eq('user_id', sess.session.user.id)
+    if (data) bookmarks.value = data
+  }
 }
 
-function saveBookmarks() {
-  localStorage.setItem('bamboooracle_bookmarks', JSON.stringify(bookmarks.value))
+async function saveBookmark(item: { char: string; meaning: string; category: string }) {
+  const { data: sess } = await supabase.auth.getSession()
+  if (!sess.session?.user) return
+  await supabase.from('bookmarks').insert({
+    user_id: sess.session.user.id,
+    char: item.char,
+    meaning: item.meaning,
+    category: item.category
+  })
+}
+
+async function removeBookmark(char: string) {
+  const { data: sess } = await supabase.auth.getSession()
+  if (!sess.session?.user) return
+  await supabase.from('bookmarks').delete().eq('user_id', sess.session.user.id).eq('char', char)
 }
 
 function isBookmarked(char: string): boolean {
   return bookmarks.value.some(b => b.char === char)
 }
 
-function toggleBookmark(item: typeof chars[0]) {
+async function toggleBookmark(item: typeof chars[0]) {
+  const { data: sess } = await supabase.auth.getSession()
+  if (!sess.session?.user) { alert('请先登录'); return }
   const idx = bookmarks.value.findIndex(b => b.char === item.char)
   if (idx >= 0) {
     bookmarks.value.splice(idx, 1)
+    await removeBookmark(item.char)
   } else {
     bookmarks.value.push({ char: item.char, meaning: item.meaning, category: item.category })
+    await saveBookmark({ char: item.char, meaning: item.meaning, category: item.category })
   }
-  saveBookmarks()
 }
 
 onMounted(() => {
