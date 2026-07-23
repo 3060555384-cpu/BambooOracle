@@ -67,31 +67,36 @@ async function handleSubmit() {
 
   try {
     if (isRegister.value) {
-      // 注册
+      // 注册：signUp 返回 3 种情况需全部处理
       const { data, error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
         options: {
-          data: { nickname: form.nickname || form.email.split('@')[0] }
+          data: { nickname: form.nickname.trim() || form.email.split('@')[0] }
         }
       })
       if (error) throw error
-      if (data.user) {
-        // 注册成功立即写入全局状态，不等待 profiles 更新
-        setCurrentUser({
-          id: data.user.id,
-          email: data.user.email,
-          nickname: form.nickname || data.user.user_metadata?.nickname || '甲骨学者'
-        })
-        // 异步更新 profiles，失败不阻塞用户
-        supabase.from('profiles').update({ nickname: form.nickname }).eq('id', data.user.id)
-          .then(() => {}, () => {})
+
+      const nick = form.nickname.trim() || form.email.split('@')[0]
+
+      if (data.session && data.user) {
+        // 情况1：邮件自动确认（mailer_autoconfirm=true），直接登录
+        setCurrentUser({ id: data.user.id, email: data.user.email!, nickname: nick })
+        supabase.from('profiles').upsert({ id: data.user.id, nickname: nick }).then(() => {}, () => {})
         succMsg.value = '注册成功！'
         setTimeout(() => {
           switchMode()
-          const redirect = (route.query.redirect as string) || '/'
-          router.push(redirect)
+          router.push((route.query.redirect as string) || '/')
         }, 800)
+      } else if (data.user) {
+        // 情况2：有用户但无 session，需邮箱验证
+        supabase.from('profiles').upsert({ id: data.user.id, nickname: nick }).then(() => {}, () => {})
+        succMsg.value = '注册成功！请查收邮箱验证邮件后登录。'
+        setTimeout(() => switchMode(), 2500)
+      } else {
+        // 情况3：signUp 返回空（极端情况），仍然可能是邮箱验证模式
+        succMsg.value = '已发送验证邮件，请查收邮箱后登录。'
+        setTimeout(() => switchMode(), 2500)
       }
     } else {
       // 登录
@@ -101,14 +106,12 @@ async function handleSubmit() {
       })
       if (error) throw error
       if (data.user) {
-        // 登录成功：立即写入全局登录状态（同步生效），不再等待异步校验
         setCurrentUser({
           id: data.user.id,
-          email: data.user.email,
+          email: data.user.email!,
           nickname: data.user.user_metadata?.nickname || '甲骨学者'
         })
-        const redirect = (route.query.redirect as string) || '/'
-        router.push(redirect)
+        router.push((route.query.redirect as string) || '/')
       }
     }
   } catch (error: any) {
