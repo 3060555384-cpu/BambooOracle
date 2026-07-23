@@ -7,7 +7,7 @@
       <hr class="ink-divider" />
       <form class="auth-form" @submit.prevent="handleSubmit">
         <div v-if="isRegister" class="form-group">
-          <label>昵称</label>
+          <label>昵称 <span class="form-hint">（至少2个字）</span></label>
           <input v-model="form.nickname" type="text" placeholder="给自己取个雅号" />
         </div>
         <div class="form-group">
@@ -15,12 +15,12 @@
           <input v-model="form.email" type="email" placeholder="name@example.com" />
         </div>
         <div class="form-group">
-          <label>密码</label>
+          <label>密码 <span class="form-hint">（至少6位）</span></label>
           <input v-model="form.password" type="password" placeholder="不少于 6 位" />
         </div>
         <p v-if="errMsg" class="auth-error">{{ errMsg }}</p>
         <p v-if="succMsg" class="auth-success">{{ succMsg }}</p>
-        <button type="submit" class="btn-ink auth-btn" :disabled="loading || !valid">{{ loading ? '处理中...' : (isRegister ? '创建账号' : '登录') }}</button>
+        <button type="submit" class="btn-ink auth-btn" :disabled="loading">{{ loading ? '处理中...' : (isRegister ? '创建账号' : '登录') }}</button>
       </form>
       <p class="auth-toggle">
         <span v-if="!isRegister">尚无账号？<a href="#" @click.prevent="switchMode">立即注册</a></span>
@@ -31,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { setCurrentUser } from '../lib/auth'
@@ -43,12 +43,13 @@ const errMsg = ref('')
 const succMsg = ref('')
 const loading = ref(false)
 const form = reactive({ nickname: '', email: '', password: '' })
-const valid = computed(() => {
-  const e = /^[^\s@]+@[^\s@]+$/.test(form.email)
-  const p = form.password.length >= 6
-  const n = isRegister.value ? form.nickname.trim().length >= 2 : true
-  return e && p && n
-})
+
+function validateForm(): string | null {
+  if (isRegister.value && form.nickname.trim().length < 2) return '请输入昵称（至少2个字符）'
+  if (!/^[^\s@]+@[^\s@]+$/.test(form.email)) return '请输入有效的邮箱地址'
+  if (form.password.length < 6) return '密码至少需要6位'
+  return null
+}
 
 function switchMode() {
   isRegister.value = !isRegister.value
@@ -60,9 +61,16 @@ function switchMode() {
 }
 
 async function handleSubmit() {
-  if (!valid.value || loading.value) return
+  if (loading.value) return
   errMsg.value = ''
   succMsg.value = ''
+
+  const validationError = validateForm()
+  if (validationError) {
+    errMsg.value = validationError
+    return
+  }
+
   loading.value = true
 
   try {
@@ -136,6 +144,8 @@ async function handleSubmit() {
 .auth-error{color:var(--cinnabar);font-size:.82rem;margin-top:4px;text-align:center}
 .auth-success{color:var(--jade);font-size:.82rem;margin-top:4px;text-align:center}
 .auth-btn{width:100%;margin-top:8px}
+.auth-btn:disabled{opacity:.6;cursor:not-allowed}
+.form-hint{font-size:.75rem;color:var(--ink-wash);font-weight:400}
 .auth-toggle{font-size:.85rem;color:var(--ink-wash);margin-top:20px}
 .auth-toggle a{color:var(--gold);text-decoration:none;border-bottom:1px solid transparent;transition:border-color .3s}
 .auth-toggle a:hover{border-bottom-color:var(--gold)}
