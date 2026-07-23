@@ -83,7 +83,7 @@ export async function logoutUser() {
 // SIGNED_OUT / INITIAL_SESSION / PASSWORD_RECOVERY → 完全忽略，UI 不受影响
 // 只有用户主动点退出才会触发 logoutUser() → setCurrentUser(null)
 export function initAuthListener() {
-  supabase.auth.onAuthStateChange((event, session) => {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
       refreshUser()
     } else if (event === 'SIGNED_IN' && session?.user && currentUser.value?.id !== session.user.id) {
@@ -91,4 +91,5 @@ export function initAuthListener() {
     }
     // 其他事件（SIGNED_OUT、INITIAL_SESSION、PASSWORD_RECOVERY）全部忽略
   })
+  return () => subscription.unsubscribe()
 }

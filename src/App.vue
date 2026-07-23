@@ -240,19 +240,25 @@ function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }) }
 const router = useRouter()
 router.afterEach(() => { menuOpen.value = false })
 
+let unsubAuth: (() => void) | undefined
+let docClickHandler: ((e: Event) => void) | undefined
+
 onMounted(() => {
-  initAuthListener()
-  refreshUser() // 后台静默校验，不阻塞界面
+  unsubAuth = initAuthListener()
+  refreshUser()
   window.addEventListener('scroll', onScroll, { passive: true })
   initInk()
-  document.addEventListener('click', (e) => {
+  docClickHandler = (e: Event) => {
     if (showUserMenu.value && !(e.target as HTMLElement).closest('.nav-user')) showUserMenu.value = false
-  })
+  }
+  document.addEventListener('click', docClickHandler)
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', onScroll)
   cleanupInk()
+  unsubAuth?.()
+  if (docClickHandler) document.removeEventListener('click', docClickHandler)
 })
 </script>
 

@@ -230,14 +230,14 @@ async function loadHistory() {
 
 async function clearBookmarks() {
   if (!confirm('确定要清空所有收藏吗？此操作不可撤销。')) return
-  await supabase.from('bookmarks').delete().eq('user_id', user.value.id)
-  bookmarks.value = []
+  const { error } = await supabase.from('bookmarks').delete().eq('user_id', user.value.id)
+  if (!error) bookmarks.value = []
 }
 
 async function clearHistory() {
   if (!confirm('确定要清空所有识别历史吗？此操作不可撤销。')) return
-  await supabase.from('recognition_history').delete().eq('user_id', user.value.id)
-  historyItems.value = []
+  const { error } = await supabase.from('recognition_history').delete().eq('user_id', user.value.id)
+  if (!error) historyItems.value = []
 }
 
 function goToDictionary() {

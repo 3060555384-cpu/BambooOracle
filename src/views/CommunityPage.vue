@@ -118,9 +118,13 @@ async function loadPosts() {
   const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false })
   if (!error && data) {
     const postList = data as any[]
-    // 加载每条帖子的评论
-    for (const p of postList) {
-      const { data: comments } = await supabase.from('comments').select('*').eq('post_id', p.id).order('created_at', { ascending: true })
+    // 并行加载所有帖子的评论，避免串行阻塞
+    const commentPromises = postList.map(p =>
+      supabase.from('comments').select('*').eq('post_id', p.id).order('created_at', { ascending: true })
+    )
+    const results = await Promise.all(commentPromises)
+    results.forEach(({ data: comments }, i) => {
+      const p = postList[i]
       p._comments = comments || []
       p._showComments = false
       p._replyText = ''
@@ -128,7 +132,7 @@ async function loadPosts() {
       p.likes = p.likes || 0
       p.liked = false
       p.shared = false
-    }
+    })
     posts.value = postList
   }
   loading.value = false
@@ -159,8 +163,8 @@ async function submitPost() {
 
 async function deletePost(id: number) {
   if (!confirm('确定删除这条帖子吗？')) return
-  await supabase.from('posts').delete().eq('id', id)
-  posts.value = posts.value.filter(p => p.id !== id)
+  const { error } = await supabase.from('posts').delete().eq('id', id)
+  if (!error) posts.value = posts.value.filter(p => p.id !== id)
 }
 
 async function toggleComments(post: Post) {

@@ -89,7 +89,7 @@ async function handleSubmit() {
 
       if (data.session && data.user) {
         // 情况1：邮件自动确认（mailer_autoconfirm=true），直接登录
-        setCurrentUser({ id: data.user.id, email: data.user.email!, nickname: nick })
+        setCurrentUser({ id: data.user.id, email: data.user.email ?? form.email, nickname: nick })
         supabase.from('profiles').upsert({ id: data.user.id, nickname: nick }).then(() => {}, () => {})
         succMsg.value = '注册成功！'
         setTimeout(() => {
@@ -116,7 +116,7 @@ async function handleSubmit() {
       if (data.user) {
         setCurrentUser({
           id: data.user.id,
-          email: data.user.email!,
+          email: data.user.email ?? form.email,
           nickname: data.user.user_metadata?.nickname || '甲骨学者'
         })
         router.push((route.query.redirect as string) || '/')
