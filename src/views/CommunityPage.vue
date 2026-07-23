@@ -194,7 +194,12 @@ async function addComment(post: Post) {
     payload.reply_to_author = post._replyTo.author
   }
   const { data, error } = await supabase.from('comments').insert(payload).select().single()
-  if (!error && data) {
+  if (error) {
+    console.error('评论失败:', error.message)
+    alert('评论发送失败: ' + error.message)
+    return
+  }
+  if (data) {
     post._comments.push(data)
     post._replyText = ''
     post._replyTo = null
