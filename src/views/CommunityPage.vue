@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="community-page">
     <div class="page-header">
       <h1>同好社群</h1>
@@ -190,12 +190,17 @@ async function loadUser() {
   try {
     const { data } = await supabase.auth.getSession()
     if (data.session?.user) {
-      const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', data.session.user.id).single()
+      // 先设置基本用户信息
       user.value = {
         id: data.session.user.id,
         email: data.session.user.email,
-        nickname: profile?.nickname || data.session.user.user_metadata?.nickname || '甲骨学者'
+        nickname: data.session.user.user_metadata?.nickname || '甲骨学者'
       }
+      // 异步获取 profiles 昵称（失败不影响）
+      try {
+        const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', data.session.user.id).single()
+        if (profile?.nickname) { user.value.nickname = profile.nickname }
+      } catch (_) { /* ignore */ }
       return
     }
   } catch (e) { /* fallback */ }
@@ -206,12 +211,17 @@ async function loadUser() {
     if (raw) {
       const session = JSON.parse(raw)
       if (session?.user) {
-        const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', session.user.id).single()
+        // 先设置基本用户信息
         user.value = {
           id: session.user.id,
           email: session.user.email,
-          nickname: profile?.nickname || session.user.user_metadata?.nickname || '甲骨学者'
+          nickname: session.user.user_metadata?.nickname || '甲骨学者'
         }
+        // 异步获取 profiles 昵称（失败不影响）
+        try {
+          const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', session.user.id).single()
+          if (profile?.nickname) { user.value.nickname = profile.nickname }
+        } catch (_) { /* ignore */ }
         return
       }
     }
