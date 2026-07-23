@@ -55,12 +55,23 @@
         </div>
         <div v-if="post._showComments" class="comments-section">
           <div v-for="c in post._comments" :key="c.id" class="comment-item">
-            <span class="comment-author">{{ c.author }}</span>
+            <div class="comment-head">
+              <span class="comment-author">{{ c.author }}</span>
+              <span v-if="c.reply_to_author" class="comment-reply-arrow">&#10148;</span>
+              <span v-if="c.reply_to_author" class="comment-author comment-reply-to">{{ c.reply_to_author }}</span>
+            </div>
             <span class="comment-text">{{ c.content }}</span>
-            <span class="comment-time">{{ formatTime(c.created_at) }}</span>
+            <div class="comment-foot">
+              <span class="comment-time">{{ formatTime(c.created_at) }}</span>
+              <button v-if="user" class="comment-reply-btn" @click="startReply(post, c)">回复</button>
+            </div>
           </div>
           <div v-if="user" class="comment-form">
-            <input v-model="post._replyText" type="text" placeholder="写下你的看法..." class="comment-input" @keyup.enter="addComment(post)" />
+            <span v-if="post._replyTo" class="reply-indicator">
+              回复 <strong>{{ post._replyTo.author }}</strong>
+              <a href="#" @click.prevent="cancelReply(post)">取消</a>
+            </span>
+            <input v-model="post._replyText" type="text" :placeholder="post._replyTo ? '回复 ' + post._replyTo.author + '...' : '写下你的看法...'" class="comment-input" @keyup.enter="addComment(post)" />
             <button class="btn-ink comment-btn" @click="addComment(post)" :disabled="!post._replyText?.trim()">回复</button>
           </div>
           <p v-else class="empty-state" style="padding:12px;font-size:.8rem">请<a href="/login">登录</a>后发表评论</p>
@@ -75,8 +86,8 @@ import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../lib/supabase'
 import { currentUser, recoverUser } from '../lib/auth'
 
-interface Comment { id: number; post_id: number; user_id: string; author: string; content: string; created_at: string }
-interface Post { id: number; user_id: string; author: string; tag: string; content: string; likes: number; liked: boolean; shared: boolean; created_at: string; _comments: Comment[]; _showComments: boolean; _replyText: string }
+interface Comment { id: number; post_id: number; user_id: string; author: string; content: string; created_at: string; reply_to_user_id?: string; reply_to_author?: string }
+interface Post { id: number; user_id: string; author: string; tag: string; content: string; likes: number; liked: boolean; shared: boolean; created_at: string; _comments: Comment[]; _showComments: boolean; _replyText: string; _replyTo: Comment | null }
 
 // 直接引用模块级全局登录状态（ES 模块单例，与 App.vue 同一个 ref 引用）
 const user = currentUser
@@ -113,6 +124,7 @@ async function loadPosts() {
       p._comments = comments || []
       p._showComments = false
       p._replyText = ''
+      p._replyTo = null
       p.likes = p.likes || 0
       p.liked = false
       p.shared = false
@@ -135,6 +147,7 @@ async function submitPost() {
     data._comments = []
     data._showComments = false
     data._replyText = ''
+    data._replyTo = null
     data.likes = 0
     data.liked = false
     data.shared = false
@@ -158,17 +171,33 @@ async function toggleComments(post: Post) {
   }
 }
 
+function startReply(post: Post, comment: Comment) {
+  post._replyTo = comment
+  post._replyText = ''
+}
+
+function cancelReply(post: Post) {
+  post._replyTo = null
+  post._replyText = ''
+}
+
 async function addComment(post: Post) {
   if (!post._replyText?.trim() || !user.value) return
-  const { data, error } = await supabase.from('comments').insert({
+  const payload: any = {
     post_id: post.id,
     user_id: user.value.id,
     author: user.value.nickname || '匿名学者',
     content: post._replyText
-  }).select().single()
+  }
+  if (post._replyTo) {
+    payload.reply_to_user_id = post._replyTo.user_id
+    payload.reply_to_author = post._replyTo.author
+  }
+  const { data, error } = await supabase.from('comments').insert(payload).select().single()
   if (!error && data) {
     post._comments.push(data)
     post._replyText = ''
+    post._replyTo = null
   }
 }
 
@@ -233,14 +262,24 @@ onMounted(() => {
 .post-foot button.liked{color:var(--cinnabar-light)}
 .heart-icon{font-size:1rem}
 .comments-section{background:var(--paper);border-radius:var(--radius-md);padding:14px 18px;margin-top:14px;border:1px solid var(--paper-dark)}
-.comment-item{display:flex;align-items:baseline;gap:8px;padding:6px 0;font-size:.85rem;flex-wrap:wrap}
+.comment-item{display:flex;flex-direction:column;gap:4px;padding:6px 0;font-size:.85rem}
 .comment-item+.comment-item{border-top:1px solid var(--paper-dark);padding-top:10px;margin-top:4px}
+.comment-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .comment-author{color:var(--gold);font-weight:bold;font-size:.8rem;white-space:nowrap}
-.comment-text{color:var(--ink);flex:1;line-height:1.6}
+.comment-reply-arrow{color:var(--ink-wash);font-size:.7rem}
+.comment-reply-to{color:var(--cinnabar-light)}
+.comment-text{color:var(--ink);line-height:1.6}
+.comment-foot{display:flex;align-items:center;gap:10px}
 .comment-time{color:var(--ink-wash);font-size:.7rem;white-space:nowrap}
-.comment-form{display:flex;gap:8px;margin-top:12px}
+.comment-reply-btn{background:none;border:none;color:var(--ink-wash);cursor:pointer;font-size:.75rem;padding:0;text-decoration:underline dashed;transition:color .2s}
+.comment-reply-btn:hover{color:var(--gold)}
+.comment-form{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .comment-input{flex:1;padding:8px 12px;border:1px solid var(--paper-dark);border-radius:var(--radius);font-size:.85rem;font-family:inherit;outline:none;background:#fff}
 .comment-input:focus{border-color:var(--gold)}
+.reply-indicator{font-size:.8rem;color:var(--ink-wash);display:flex;align-items:center;gap:6px}
+.reply-indicator strong{color:var(--cinnabar-light)}
+.reply-indicator a{color:var(--ink-wash);font-size:.75rem}
+.comment-form .comment-input,.comment-form .comment-btn{align-self:stretch;width:100%}
 .comment-btn{padding:6px 16px!important;font-size:.8rem!important}
 .empty-state{text-align:center;padding:40px 20px;color:var(--ink-wash)}
 .empty-state a{color:var(--gold)}
