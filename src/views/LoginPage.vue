@@ -34,6 +34,7 @@
 import { ref, computed, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase'
+import { setCurrentUser } from '../lib/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -89,12 +90,14 @@ async function handleSubmit() {
       })
       if (error) throw error
       if (data.user) {
-        succMsg.value = '登录成功，正在跳转...'
-        window.dispatchEvent(new Event('auth-change'))
-        setTimeout(() => {
-          const redirect = (route.query.redirect as string) || '/'
-          router.push(redirect)
-        }, 500)
+        // 登录成功：立即写入全局登录状态（同步生效），不再等待异步校验
+        setCurrentUser({
+          id: data.user.id,
+          email: data.user.email,
+          nickname: data.user.user_metadata?.nickname || '甲骨学者'
+        })
+        const redirect = (route.query.redirect as string) || '/'
+        router.push(redirect)
       }
     }
   } catch (error: any) {

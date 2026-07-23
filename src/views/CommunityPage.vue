@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="community-page">
     <div class="page-header">
       <h1>同好社群</h1>
@@ -73,11 +73,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../lib/supabase'
+import { currentUser, recoverUser } from '../lib/auth'
 
 interface Comment { id: number; post_id: number; user_id: string; author: string; content: string; created_at: string }
 interface Post { id: number; user_id: string; author: string; tag: string; content: string; likes: number; liked: boolean; shared: boolean; created_at: string; _comments: Comment[]; _showComments: boolean; _replyText: string }
 
-const user = ref<any>(null)
+// 直接引用模块级全局登录状态（ES 模块单例，与 App.vue 同一个 ref 引用）
+const user = currentUser
 const selTag = ref('')
 const newPost = ref('')
 const newTag = ref('甲骨趣谈')
@@ -186,50 +188,8 @@ function sharePost(post: Post) {
   }
 }
 
-async function loadUser() {
-  try {
-    const { data } = await supabase.auth.getSession()
-    if (data.session?.user) {
-      // 先设置基本用户信息
-      user.value = {
-        id: data.session.user.id,
-        email: data.session.user.email,
-        nickname: data.session.user.user_metadata?.nickname || '甲骨学者'
-      }
-      // 异步获取 profiles 昵称（失败不影响）
-      try {
-        const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', data.session.user.id).single()
-        if (profile?.nickname) { user.value.nickname = profile.nickname }
-      } catch (_) { /* ignore */ }
-      return
-    }
-  } catch (e) { /* fallback */ }
-
-  try {
-    const key = 'sb-pbaxbuscxhtfrvazwbtw-auth-token'
-    const raw = localStorage.getItem(key)
-    if (raw) {
-      const session = JSON.parse(raw)
-      if (session?.user) {
-        // 先设置基本用户信息
-        user.value = {
-          id: session.user.id,
-          email: session.user.email,
-          nickname: session.user.user_metadata?.nickname || '甲骨学者'
-        }
-        // 异步获取 profiles 昵称（失败不影响）
-        try {
-          const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', session.user.id).single()
-          if (profile?.nickname) { user.value.nickname = profile.nickname }
-        } catch (_) { /* ignore */ }
-        return
-      }
-    }
-  } catch (e) { /* ignore */ }
-}
-
 onMounted(() => {
-  loadUser()
+  recoverUser()
   loadPosts()
 })
 </script>

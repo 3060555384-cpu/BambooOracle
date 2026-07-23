@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="profile-page">
     <!-- 未登录状态 -->
     <div v-if="!user" class="profile-empty">
@@ -142,14 +142,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
+import { currentUser, setCurrentUser, logoutUser, recoverUser } from '../lib/auth'
 
 const router = useRouter()
 
-// 用户状态
-const user = ref<any>(null)
+// 直接引用模块级全局登录状态（ES 模块单例，与 App.vue 同一个 ref 引用，不可能分叉）
+const user = currentUser
 
 // 昵称编辑
 const editingNick = ref(false)
@@ -176,7 +177,7 @@ async function saveNick() {
   if (!editingNick.value) return
   const val = nickDraft.value.trim()
   if (val && user.value) {
-    user.value.nickname = val
+    setCurrentUser({ ...user.value, nickname: val })
     await supabase.from('profiles').update({ nickname: val }).eq('id', user.value.id)
   }
   editingNick.value = false
@@ -245,64 +246,23 @@ function goToDictionary() {
 
 async function handleLogout() {
   if (!confirm('确定要退出登录吗？')) return
-  await supabase.auth.signOut()
-  user.value = null
-  window.dispatchEvent(new Event('auth-change'))
+  await logoutUser()
   router.push('/')
 }
 
-async function loadUser() {
-  // 先用 SDK 获取 session，如果失败则从 localStorage 兜底
-  try {
-    const { data, error } = await supabase.auth.getSession()
-    if (!error && data.session?.user) {
-      const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', data.session.user.id).single()
-      user.value = {
-        id: data.session.user.id,
-        email: data.session.user.email,
-        nickname: profile?.nickname || data.session.user.user_metadata?.nickname || '甲骨学者'
-      }
-      loadBookmarks()
-      loadHistory()
-      return
-    }
-  } catch (e) { /* fallback */ }
-
-  // 从 localStorage 读取 Supabase 缓存的 session
-  try {
-    const key = 'sb-pbaxbuscxhtfrvazwbtw-auth-token'
-    const raw = localStorage.getItem(key)
-    if (raw) {
-      const session = JSON.parse(raw)
-      if (session?.user) {
-        // 先设置基本用户信息，确保页面立即显示已登录状态
-        user.value = {
-          id: session.user.id,
-          email: session.user.email,
-          nickname: session.user.user_metadata?.nickname || '甲骨学者'
-        }
-        loadBookmarks()
-        loadHistory()
-        // 异步尝试获取 profiles 表中的昵称（失败不影响已登录状态）
-        try {
-          const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', session.user.id).single()
-          if (profile?.nickname) {
-            user.value.nickname = profile.nickname
-          }
-        } catch (_) { /* profiles 查询失败不影响 */ }
-        return
-      }
-    }
-  } catch (e) { /* ignore */ }
-}
-
-async function handleAuthChange() {
-  await loadUser()
-}
+// 监听统一用户状态变化，自动加载收藏和历史
+watch(user, (newUser) => {
+  if (newUser) {
+    loadBookmarks()
+    loadHistory()
+  }
+}, { immediate: true })
 
 onMounted(() => {
-  loadUser()
-  window.addEventListener('auth-change', handleAuthChange)
+  // 兜底：如果 currentUser 被 Supabase 事件意外清空（SIGNED_OUT 误触发等），
+  // 立即从 localStorage 抢救回来，确保页面不会闪"请先登录"
+  recoverUser()
+  // user 的 watch(immediate) 已处理数据加载
 })
 </script>
 

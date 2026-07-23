@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div id="app-root">
     <nav class="navbar-ink">
       <div class="nav-inner">
@@ -90,62 +90,17 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { supabase } from './lib/supabase'
+import { currentUser, refreshUser, initAuthListener, logoutUser } from './lib/auth'
 
 const year = new Date().getFullYear()
 const menuOpen = ref(false)
 const showUserMenu = ref(false)
-const user = ref<any>(null)
+// 全局统一登录状态（模块加载时已从 localStorage 同步恢复，页面秒开不闪烁）
+const user = currentUser
 const searchQuery = ref('')
 const searchFocused = ref(false)
 const inkCanvas = ref<HTMLCanvasElement>()
 const showTop = ref(false)
-
-async function checkAuth() {
-  // 先尝试 SDK
-  try {
-    const { data } = await supabase.auth.getSession()
-    if (data.session?.user) {
-      // 先设置基本用户信息
-      user.value = {
-        id: data.session.user.id,
-        email: data.session.user.email,
-        nickname: data.session.user.user_metadata?.nickname || '甲骨学者'
-      }
-      // 异步获取 profiles 昵称（失败不影响）
-      try {
-        const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', data.session.user.id).single()
-        if (profile?.nickname) { user.value.nickname = profile.nickname }
-      } catch (_) { /* ignore */ }
-      return
-    }
-  } catch (e) { /* fallback */ }
-
-  // 从 localStorage 读取缓存的 session
-  try {
-    const key = 'sb-pbaxbuscxhtfrvazwbtw-auth-token'
-    const raw = localStorage.getItem(key)
-    if (raw) {
-      const session = JSON.parse(raw)
-      if (session?.user) {
-        // 先设置基本用户信息
-        user.value = {
-          id: session.user.id,
-          email: session.user.email,
-          nickname: session.user.user_metadata?.nickname || '甲骨学者'
-        }
-        // 异步获取 profiles 昵称（失败不影响）
-        try {
-          const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', session.user.id).single()
-          if (profile?.nickname) { user.value.nickname = profile.nickname }
-        } catch (_) { /* ignore */ }
-        return
-      }
-    }
-  } catch (e) { /* ignore */ }
-
-  user.value = null
-}
 
 function doSearch() {
   const q = searchQuery.value.trim()
@@ -156,8 +111,7 @@ function doSearch() {
 }
 
 async function logout() {
-  await supabase.auth.signOut()
-  user.value = null
+  await logoutUser()
   showUserMenu.value = false
   router.push('/')
 }
@@ -287,16 +241,9 @@ const router = useRouter()
 router.afterEach(() => { menuOpen.value = false })
 
 onMounted(() => {
-  checkAuth()
-  supabase.auth.onAuthStateChange((_event, session) => {
-    if (session?.user) {
-      checkAuth()
-    } else {
-      user.value = null
-    }
-  })
+  initAuthListener()
+  refreshUser() // 后台静默校验，不阻塞界面
   window.addEventListener('scroll', onScroll, { passive: true })
-  window.addEventListener('auth-change', checkAuth)
   initInk()
   document.addEventListener('click', (e) => {
     if (showUserMenu.value && !(e.target as HTMLElement).closest('.nav-user')) showUserMenu.value = false
@@ -305,7 +252,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('scroll', onScroll)
-  window.removeEventListener('auth-change', checkAuth)
   cleanupInk()
 })
 </script>
