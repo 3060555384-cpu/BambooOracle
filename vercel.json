@@ -2,5 +2,8 @@
   "buildCommand": null,
   "outputDirectory": "dist",
   "framework": null,
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/supabase/:path*", "destination": "https://quiet-wind-c950.3060555384.workers.dev/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
