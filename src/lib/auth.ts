@@ -7,12 +7,19 @@ import { supabase } from './supabase'
 const USER_CACHE_KEY = 'bamboooracle-user'
 const PROFILE_FETCHED_KEY = 'bamboooracle-profile-fetched'
 
-function readCachedUser(): any {
+export interface BambooUser {
+  id: string
+  email: string
+  nickname: string
+  avatar_url?: string
+}
+
+function readCachedUser(): BambooUser | null {
   try {
     const raw = localStorage.getItem(USER_CACHE_KEY)
     if (raw) {
       const u = JSON.parse(raw)
-      if (u && u.id) return u
+      if (u && u.id) return u as BambooUser
     }
   } catch (_) { /* ignore */ }
   return null
@@ -20,16 +27,18 @@ function readCachedUser(): any {
 
 // 模块加载时同步从 localStorage 恢复登录态
 // 之后只有 logoutUser() 能把这个值设为 null
-export const currentUser = ref<any>(readCachedUser())
+export const currentUser = ref<BambooUser | null>(readCachedUser())
 
-export function setCurrentUser(u: any) {
+export function setCurrentUser(u: BambooUser | null) {
   const prev = currentUser.value
-  if (prev && u && prev.id === u.id && prev.email === u.email && prev.nickname === u.nickname) return
+  if (prev && u && prev.id === u.id && prev.email === u.email && prev.nickname === u.nickname && prev.avatar_url === u.avatar_url) return
   if (!prev && !u) return
   currentUser.value = u
   try {
     if (u) {
-      localStorage.setItem(USER_CACHE_KEY, JSON.stringify({ id: u.id, email: u.email, nickname: u.nickname }))
+      const cache: BambooUser = { id: u.id, email: u.email, nickname: u.nickname }
+      if (u.avatar_url) cache.avatar_url = u.avatar_url
+      localStorage.setItem(USER_CACHE_KEY, JSON.stringify(cache))
     } else {
       localStorage.removeItem(USER_CACHE_KEY)
     }
@@ -51,10 +60,13 @@ function fetchProfileOnce(userId: string) {
     if (sessionStorage.getItem(PROFILE_FETCHED_KEY) === userId) return
     sessionStorage.setItem(PROFILE_FETCHED_KEY, userId)
   } catch (_) { return }
-  supabase.from('profiles').select('nickname').eq('id', userId).single()
+  supabase.from('profiles').select('nickname,avatar_url').eq('id', userId).single()
     .then(({ data: profile }) => {
-      if (profile?.nickname && currentUser.value) {
-        setCurrentUser({ ...currentUser.value, nickname: profile.nickname })
+      if (profile && currentUser.value) {
+        const update: Partial<BambooUser> = {}
+        if (profile.nickname) update.nickname = profile.nickname
+        if (profile.avatar_url) update.avatar_url = profile.avatar_url
+        if (Object.keys(update).length > 0) setCurrentUser({ ...currentUser.value, ...update })
       }
     }, () => {})
 }
@@ -68,7 +80,7 @@ export async function refreshUser() {
     const nickname = prev?.id === u.id && prev?.nickname
       ? prev.nickname
       : (u.user_metadata?.nickname || '甲骨学者')
-    setCurrentUser({ id: u.id, email: u.email, nickname })
+    setCurrentUser({ id: u.id, email: u.email!, nickname, avatar_url: prev?.id === u.id ? prev?.avatar_url : undefined })
     fetchProfileOnce(u.id)
   } catch (_) { /* 网络异常时保留缓存登录态 */ }
 }

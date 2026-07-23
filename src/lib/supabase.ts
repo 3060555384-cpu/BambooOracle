@@ -23,3 +23,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     flowType: 'pkce'
   }
 })
+
+// 头像上传到 Supabase Storage
+export async function uploadAvatar(userId: string, file: File): Promise<string | null> {
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'png'
+  const path = `${userId}.${ext}`
+  const { error } = await supabase.storage
+    .from('avatars')
+    .upload(path, file, { upsert: true, contentType: file.type })
+  if (error) {
+    console.error('头像上传失败:', error.message)
+    return null
+  }
+  const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+  return urlData.publicUrl
+}

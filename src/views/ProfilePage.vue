@@ -14,7 +14,18 @@
       <section class="profile-hero">
         <div class="profile-card">
           <div class="profile-avatar-wrap">
-            <div class="profile-avatar seal-lg">甲</div>
+            <label class="profile-avatar-clickable" title="点击更换头像">
+              <img v-if="user.avatar_url" :src="user.avatar_url" class="profile-avatar-img" alt="头像" />
+              <div v-else class="profile-avatar seal-lg">甲</div>
+              <input
+                ref="avatarInputRef"
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                class="avatar-file-input"
+                @change="handleAvatarChange"
+              />
+              <span class="profile-avatar-hint">更换头像</span>
+            </label>
             <span class="profile-role-tag">甲骨学者</span>
           </div>
           <div class="profile-info">
@@ -144,7 +155,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { supabase } from '../lib/supabase'
+import { supabase, uploadAvatar } from '../lib/supabase'
 import { currentUser, setCurrentUser, logoutUser, recoverUser } from '../lib/auth'
 
 const router = useRouter()
@@ -156,6 +167,28 @@ const user = currentUser
 const editingNick = ref(false)
 const nickDraft = ref('')
 const nickInputRef = ref<HTMLInputElement>()
+
+// 头像上传
+const avatarInputRef = ref<HTMLInputElement>()
+const uploadingAvatar = ref(false)
+
+async function handleAvatarChange(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file || !user.value) return
+  if (file.size > 2 * 1024 * 1024) {
+    alert('头像文件不能超过 2MB')
+    return
+  }
+  uploadingAvatar.value = true
+  const url = await uploadAvatar(user.value.id, file)
+  if (url) {
+    setCurrentUser({ ...user.value, avatar_url: url })
+    await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.value.id)
+  }
+  uploadingAvatar.value = false
+  // 重置 input 以允许重复选择同一文件
+  if (avatarInputRef.value) avatarInputRef.value.value = ''
+}
 
 const displayNick = computed(() => {
   if (!user.value) return ''
@@ -229,12 +262,14 @@ async function loadHistory() {
 }
 
 async function clearBookmarks() {
+  if (!user.value) return
   if (!confirm('确定要清空所有收藏吗？此操作不可撤销。')) return
   const { error } = await supabase.from('bookmarks').delete().eq('user_id', user.value.id)
   if (!error) bookmarks.value = []
 }
 
 async function clearHistory() {
+  if (!user.value) return
   if (!confirm('确定要清空所有识别历史吗？此操作不可撤销。')) return
   const { error } = await supabase.from('recognition_history').delete().eq('user_id', user.value.id)
   if (!error) historyItems.value = []
@@ -331,6 +366,45 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
 }
+.profile-avatar-clickable {
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.profile-avatar-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--gold);
+  transition: opacity .3s;
+}
+.profile-avatar-clickable:hover .profile-avatar-img {
+  opacity: .8;
+}
+.avatar-file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 64px;
+  height: 64px;
+}
+.profile-avatar-hint {
+  font-size: .7rem;
+  color: var(--ink-wash);
+  opacity: 0;
+  transition: opacity .3s;
+}
+.profile-avatar-clickable:hover .profile-avatar-hint {
+  opacity: 1;
+}
+.profile-avatar-clickable:hover .profile-avatar-hint {
+  color: var(--gold);
+}
 .profile-avatar {
   width: 64px;
   height: 64px;
@@ -344,6 +418,12 @@ onMounted(() => {
   font-weight: bold;
   transform: rotate(-6deg);
   flex-shrink: 0;
+  border-radius: 50%;
+  transition: all .3s;
+}
+.profile-avatar-clickable:hover .profile-avatar {
+  border-color: var(--gold);
+  color: var(--gold);
 }
 .profile-role-tag {
   font-size: .7rem;

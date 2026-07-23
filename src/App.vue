@@ -58,7 +58,8 @@
             <span>登录</span>
           </router-link>
           <div v-else class="nav-user" @click="showUserMenu = !showUserMenu">
-            <span class="nav-user-initial">甲</span>
+            <img v-if="user.avatar_url" :src="user.avatar_url" class="nav-user-avatar" alt="头像" />
+            <span v-else class="nav-user-initial">甲</span>
             <span class="nav-user-name">{{ user?.nickname || '用户' }}</span>
             <div v-if="showUserMenu" class="user-dropdown">
               <router-link to="/profile" @click="showUserMenu = false">个人中心</router-link>
@@ -291,6 +292,7 @@ onUnmounted(() => {
 .nav-user{position:relative;display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 12px;border-radius:var(--radius);border:1px solid var(--gold);transition:all .3s;white-space:nowrap}
 .nav-user:hover{background:rgba(184,134,11,.08)}
 .nav-user-initial{width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:rgba(184,134,11,.15);color:var(--gold);font-family:'KaiTi','STKaiti',serif;font-size:14px;font-weight:bold;border-radius:50%}
+.nav-user-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--gold)}
 .nav-user-name{color:var(--gold);font-size:.85rem;letter-spacing:1px}
 .user-dropdown{position:absolute;top:100%;right:0;margin-top:8px;background:rgba(26,26,26,.97);border:1px solid var(--gold);border-radius:var(--radius);overflow:hidden;min-width:130px;z-index:110}
 .user-dropdown a,.user-dropdown button{display:block;width:100%;padding:10px 16px;background:none;border:none;color:var(--gold-pale);cursor:pointer;font-family:inherit;font-size:.85rem;letter-spacing:1px;text-align:left;text-decoration:none;transition:all .2s}
