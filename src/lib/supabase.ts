@@ -5,7 +5,10 @@ import { createClient } from '@supabase/supabase-js'
 // 避免 QQ/微信内置浏览器拦截跨域请求（它们阻止向第三方域名发请求）。
 // 本地开发直连 Worker。
 const DEV_WORKER = 'https://quiet-wind-c950.3060555384.workers.dev'
-const supabaseUrl = import.meta.env.DEV ? DEV_WORKER : '/supabase'
+// Supabase SDK 要求完整 URL，生产环境用 origin + /supabase 实现同域请求
+const supabaseUrl = import.meta.env.DEV
+  ? DEV_WORKER
+  : (typeof window !== 'undefined' ? window.location.origin : '') + '/supabase'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
