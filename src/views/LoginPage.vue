@@ -77,11 +77,22 @@ async function handleSubmit() {
       })
       if (error) throw error
       if (data.user) {
-        // 更新 profiles 表昵称
-        await supabase.from('profiles').update({ nickname: form.nickname }).eq('id', data.user.id)
+        // 注册成功立即写入全局状态，不等待 profiles 更新
+        setCurrentUser({
+          id: data.user.id,
+          email: data.user.email,
+          nickname: form.nickname || data.user.user_metadata?.nickname || '甲骨学者'
+        })
+        // 异步更新 profiles，失败不阻塞用户
+        supabase.from('profiles').update({ nickname: form.nickname }).eq('id', data.user.id)
+          .then(() => {}, () => {})
+        succMsg.value = '注册成功！'
+        setTimeout(() => {
+          switchMode()
+          const redirect = (route.query.redirect as string) || '/'
+          router.push(redirect)
+        }, 800)
       }
-      succMsg.value = '注册成功！请查收邮箱验证链接，或直接登录。'
-      setTimeout(() => switchMode(), 2000)
     } else {
       // 登录
       const { data, error } = await supabase.auth.signInWithPassword({
