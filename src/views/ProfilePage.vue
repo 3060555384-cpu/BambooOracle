@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="profile-page">
     <!-- 未登录状态 -->
     <div v-if="!user" class="profile-empty">
@@ -275,14 +275,21 @@ async function loadUser() {
     if (raw) {
       const session = JSON.parse(raw)
       if (session?.user) {
-        const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', session.user.id).single()
+        // 先设置基本用户信息，确保页面立即显示已登录状态
         user.value = {
           id: session.user.id,
           email: session.user.email,
-          nickname: profile?.nickname || session.user.user_metadata?.nickname || '甲骨学者'
+          nickname: session.user.user_metadata?.nickname || '甲骨学者'
         }
         loadBookmarks()
         loadHistory()
+        // 异步尝试获取 profiles 表中的昵称（失败不影响已登录状态）
+        try {
+          const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', session.user.id).single()
+          if (profile?.nickname) {
+            user.value.nickname = profile.nickname
+          }
+        } catch (_) { /* profiles 查询失败不影响 */ }
         return
       }
     }
