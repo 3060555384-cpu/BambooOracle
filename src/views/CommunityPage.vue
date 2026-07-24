@@ -31,7 +31,8 @@
       <article v-for="post in filteredPosts" :key="post.id" class="post-card">
         <div class="post-head">
           <div class="post-user">
-            <span class="post-avatar">&#128100;</span>
+            <img v-if="post.avatar_url" :src="post.avatar_url" class="post-avatar-img" alt="" />
+            <span v-else class="post-avatar">&#128100;</span>
             <div>
               <span class="post-author">{{ post.author }}</span>
               <span class="post-time">{{ formatTime(post.created_at) }}</span>
@@ -56,6 +57,7 @@
         <div v-if="post._showComments" class="comments-section">
           <div v-for="c in post._comments" :key="c.id" class="comment-item">
             <div class="comment-head">
+              <img v-if="c.avatar_url" :src="c.avatar_url" class="comment-avatar-img" alt="" />
               <span class="comment-author">{{ c.author }}</span>
               <span v-if="c.reply_to_author" class="comment-reply-arrow">&#10148;</span>
               <span v-if="c.reply_to_author" class="comment-author comment-reply-to">{{ c.reply_to_author }}</span>
@@ -86,8 +88,8 @@ import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../lib/supabase'
 import { currentUser, recoverUser } from '../lib/auth'
 
-interface Comment { id: number; post_id: number; user_id: string; author: string; content: string; created_at: string; reply_to_user_id?: string; reply_to_author?: string }
-interface Post { id: number; user_id: string; author: string; tag: string; content: string; likes: number; liked: boolean; shared: boolean; created_at: string; _comments: Comment[]; _showComments: boolean; _replyText: string; _replyTo: Comment | null }
+interface Comment { id: number; post_id: number; user_id: string; author: string; content: string; created_at: string; reply_to_user_id?: string; reply_to_author?: string; avatar_url?: string }
+interface Post { id: number; user_id: string; author: string; tag: string; content: string; likes: number; liked: boolean; shared: boolean; created_at: string; _comments: Comment[]; _showComments: boolean; _replyText: string; _replyTo: Comment | null; avatar_url?: string }
 
 // 直接引用模块级全局登录状态（ES 模块单例，与 App.vue 同一个 ref 引用）
 const user = currentUser
@@ -98,6 +100,9 @@ const posting = ref(false)
 const loading = ref(true)
 const posts = ref<Post[]>([])
 const allTags = ['甲骨趣谈', '学术动态', '字形探源', '平台公告']
+
+// 用户头像缓存
+const avatarMap = ref<Record<string, string>>({})
 
 function formatTime(ts: string) {
   if (!ts) return ''
@@ -123,9 +128,31 @@ async function loadPosts() {
       supabase.from('comments').select('*').eq('post_id', p.id).order('created_at', { ascending: true })
     )
     const results = await Promise.all(commentPromises)
+
+    // 收集所有涉及的用户 ID，批量查头像
+    const userIds = new Set<string>()
+    postList.forEach(p => userIds.add(p.user_id))
+    results.forEach(({ data: comments }) => {
+      (comments || []).forEach((c: any) => userIds.add(c.user_id))
+    })
+
+    // 批量查询用户头像
+    if (userIds.size > 0) {
+      const { data: profiles } = await supabase.from('profiles')
+        .select('id,avatar_url').in('id', Array.from(userIds))
+      if (profiles) {
+        (profiles as any[]).forEach((p: any) => {
+          if (p.avatar_url) {
+            avatarMap.value = { ...avatarMap.value, [p.id]: p.avatar_url }
+          }
+        })
+      }
+    }
+
     results.forEach(({ data: comments }, i) => {
       const p = postList[i]
-      p._comments = comments || []
+      p.avatar_url = avatarMap.value[p.user_id] || ''
+      p._comments = (comments || []).map((c: any) => ({ ...c, avatar_url: avatarMap.value[c.user_id] || '' }))
       p._showComments = false
       p._replyText = ''
       p._replyTo = null
@@ -171,7 +198,21 @@ async function toggleComments(post: Post) {
   post._showComments = !post._showComments
   if (post._showComments) {
     const { data } = await supabase.from('comments').select('*').eq('post_id', post.id).order('created_at', { ascending: true })
-    if (data) post._comments = data
+    if (data) {
+      // 加载评论者的头像
+      const cids = new Set<string>()
+      ;(data as any[]).forEach((c: any) => cids.add(c.user_id))
+      const needFetch = Array.from(cids).filter(id => !avatarMap.value[id])
+      if (needFetch.length > 0) {
+        const { data: profiles } = await supabase.from('profiles').select('id,avatar_url').in('id', needFetch)
+        if (profiles) {
+          (profiles as any[]).forEach((p: any) => {
+            if (p.avatar_url) avatarMap.value = { ...avatarMap.value, [p.id]: p.avatar_url }
+          })
+        }
+      }
+      post._comments = (data as any[]).map((c: any) => ({ ...c, avatar_url: avatarMap.value[c.user_id] || '' }))
+    }
   }
 }
 
@@ -204,6 +245,7 @@ async function addComment(post: Post) {
     return
   }
   if (data) {
+    data.avatar_url = user.value.avatar_url || ''
     post._comments.push(data)
     post._replyText = ''
     post._replyTo = null
@@ -257,6 +299,8 @@ onMounted(() => {
 .post-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
 .post-user{display:flex;align-items:center;gap:10px}
 .post-avatar{font-size:2rem;line-height:1}
+.post-avatar-img{width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--paper-dark)}
+.comment-avatar-img{width:20px;height:20px;border-radius:50%;object-fit:cover;border:1px solid var(--paper-dark);flex-shrink:0}
 .post-author{display:block;font-weight:bold;color:var(--ink);font-size:.95rem;letter-spacing:1px}
 .post-time{display:block;font-size:.75rem;color:var(--ink-wash)}
 .post-head-right{display:flex;align-items:center;gap:8px}
