@@ -10,7 +10,7 @@
     </div>
     <div v-if="user" class="post-form">
       <div class="post-form-top">
-        <img v-if="user.avatar_url" :src="user.avatar_url" class="my-avatar" alt="" />
+        <img v-if="user.avatar_url" :src="user.avatar_url + '?v=' + avatarVersion" class="my-avatar" alt="" />
         <span v-else class="my-avatar my-avatar-default">&#128100;</span>
         <div class="post-form-top-right">
           <select v-model="newTag" class="form-tag-select">
@@ -35,7 +35,7 @@
       <article v-for="post in filteredPosts" :key="post.id" class="post-card">
         <div class="post-head">
           <div class="post-user">
-            <img v-if="post.avatar_url" :src="post.avatar_url" class="post-avatar-img" alt="" />
+            <img v-if="post.avatar_url" :src="post.avatar_url + '?v=' + avatarVersion" class="post-avatar-img" alt="" />
             <span v-else class="post-avatar">&#128100;</span>
             <div>
               <span class="post-author">{{ post.author }}</span>
@@ -61,7 +61,7 @@
         <div v-if="post._showComments" class="comments-section">
           <div v-for="c in post._comments" :key="c.id" class="comment-item">
             <div class="comment-head">
-              <img v-if="c.avatar_url" :src="c.avatar_url" class="comment-avatar-img" alt="" />
+              <img v-if="c.avatar_url" :src="c.avatar_url + '?v=' + avatarVersion" class="comment-avatar-img" alt="" />
               <span class="comment-author">{{ c.author }}</span>
               <span v-if="c.reply_to_author" class="comment-reply-arrow">&#10148;</span>
               <span v-if="c.reply_to_author" class="comment-author comment-reply-to">{{ c.reply_to_author }}</span>
@@ -90,7 +90,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { supabase } from '../lib/supabase'
-import { currentUser, recoverUser } from '../lib/auth'
+import { currentUser, recoverUser, avatarVersion } from '../lib/auth'
 
 interface Comment { id: number; post_id: number; user_id: string; author: string; content: string; created_at: string; reply_to_user_id?: string; reply_to_author?: string; avatar_url?: string }
 interface Post { id: number; user_id: string; author: string; tag: string; content: string; likes: number; liked: boolean; shared: boolean; created_at: string; _comments: Comment[]; _showComments: boolean; _replyText: string; _replyTo: Comment | null; avatar_url?: string }
