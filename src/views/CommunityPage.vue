@@ -9,12 +9,16 @@
       <button v-for="t in allTags" :key="t" class="tag-pill" :class="{ active: selTag === t }" @click="selTag = selTag === t ? '' : t">{{ t }}</button>
     </div>
     <div v-if="user" class="post-form">
-      <div class="form-row">
-        <select v-model="newTag" class="form-tag-select">
-          <option v-for="t in allTags" :key="t" :value="t">{{ t }}</option>
-        </select>
+      <div class="post-form-top">
+        <img v-if="user.avatar_url" :src="user.avatar_url" class="my-avatar" alt="" />
+        <span v-else class="my-avatar my-avatar-default">&#128100;</span>
+        <div class="post-form-top-right">
+          <select v-model="newTag" class="form-tag-select">
+            <option v-for="t in allTags" :key="t" :value="t">{{ t }}</option>
+          </select>
+        </div>
       </div>
-      <textarea v-model="newPost" class="post-input" placeholder="分享你发现的甲骨文知识或有趣文字..." rows="3"></textarea>
+      <textarea v-model="newPost" class="post-input" :placeholder="'你好，' + (user?.nickname || '甲骨学者') + '，分享你的发现...'" rows="3"></textarea>
       <div class="form-footer">
         <span class="form-hint" :class="{ over: newPost.length > 500 }">{{ newPost.length }}/500</span>
         <button class="btn-ink" @click="submitPost" :disabled="!newPost.trim() || newPost.length > 500 || posting">发布</button>
@@ -84,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { supabase } from '../lib/supabase'
 import { currentUser, recoverUser } from '../lib/auth'
 
@@ -273,6 +277,33 @@ onMounted(() => {
   recoverUser()
   loadPosts()
 })
+
+// 监听当前用户头像变化，全局同步到社群所有帖子和评论
+watch(() => currentUser.value?.avatar_url, (newUrl) => {
+  if (!user.value) return
+  avatarMap.value = { ...avatarMap.value, [user.value.id]: newUrl || '' }
+  // 同步到所有已加载的帖子和评论
+  posts.value.forEach(p => {
+    if (p.user_id === user.value!.id) p.avatar_url = newUrl || ''
+    p._comments?.forEach(c => {
+      if (c.user_id === user.value!.id) c.avatar_url = newUrl || ''
+    })
+  })
+})
+
+// 监听当前用户昵称变化，全局同步
+watch(() => currentUser.value?.nickname, (newName) => {
+  if (!user.value || !newName) return
+  posts.value.forEach(p => {
+    if (p.user_id === user.value!.id) p.author = newName
+  })
+  // 已加载评论的作者名也同步
+  posts.value.forEach(p => {
+    p._comments?.forEach(c => {
+      if (c.user_id === user.value!.id) c.author = newName
+    })
+  })
+})
 </script>
 
 <style scoped>
@@ -282,10 +313,13 @@ onMounted(() => {
 .tag-pill:hover{border-color:var(--gold);color:var(--gold)}
 .tag-pill.active{background:var(--gold);color:#fff;border-color:var(--gold)}
 .post-form{background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:20px;box-shadow:var(--shadow)}
+.post-form-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.my-avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--paper-dark);flex-shrink:0}
+.my-avatar-default{display:flex;align-items:center;justify-content:center;font-size:1.4rem;background:var(--paper);color:var(--ink-wash)}
+.post-form-top-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .login-hint{text-align:center;padding:28px!important}
 .login-hint p{color:var(--ink-wash);font-size:.9rem}
 .login-hint a{color:var(--gold)}
-.form-row{margin-bottom:10px}
 .form-tag-select{padding:6px 12px;border:1px solid var(--paper-dark);border-radius:var(--radius);font-size:.82rem;font-family:inherit;color:var(--ink);outline:none;background:var(--paper-light);cursor:pointer}
 .form-tag-select:focus{border-color:var(--gold)}
 .post-input{width:100%;border:1px solid var(--paper-dark);border-radius:var(--radius-md);padding:14px 16px;font-size:.95rem;resize:vertical;font-family:inherit;outline:none;box-sizing:border-box;background:var(--paper-light);transition:border-color .3s;line-height:1.7}
