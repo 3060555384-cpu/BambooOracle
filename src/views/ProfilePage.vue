@@ -181,6 +181,16 @@ async function handleAvatarChange(e: Event) {
   }
   uploadingAvatar.value = true
   try {
+    // 先刷新会话，确保令牌有效
+    const { data: sess } = await supabase.auth.getSession()
+    if (!sess.session) {
+      const { error: refErr } = await supabase.auth.refreshSession()
+      if (refErr) {
+        alert('登录已过期，请重新登录后再上传头像')
+        uploadingAvatar.value = false
+        return
+      }
+    }
     const url = await uploadAvatar(user.value.id, file)
     if (url) {
       setCurrentUser({ ...user.value, avatar_url: url })
@@ -189,7 +199,7 @@ async function handleAvatarChange(e: Event) {
         alert('保存头像失败: ' + dbErr.message)
       }
     } else {
-      alert('头像上传失败，请检查网络或稍后重试')
+      alert('头像上传失败，请重新登录后再试。如果问题持续，请刷新页面。')
     }
   } catch (err: any) {
     alert('上传出错: ' + (err?.message || '未知错误'))
