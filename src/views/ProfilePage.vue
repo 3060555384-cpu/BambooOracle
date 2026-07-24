@@ -180,10 +180,19 @@ async function handleAvatarChange(e: Event) {
     return
   }
   uploadingAvatar.value = true
-  const url = await uploadAvatar(user.value.id, file)
-  if (url) {
-    setCurrentUser({ ...user.value, avatar_url: url })
-    await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.value.id)
+  try {
+    const url = await uploadAvatar(user.value.id, file)
+    if (url) {
+      setCurrentUser({ ...user.value, avatar_url: url })
+      const { error: dbErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.value.id)
+      if (dbErr) {
+        alert('保存头像失败: ' + dbErr.message)
+      }
+    } else {
+      alert('头像上传失败，请检查网络或稍后重试')
+    }
+  } catch (err: any) {
+    alert('上传出错: ' + (err?.message || '未知错误'))
   }
   uploadingAvatar.value = false
   // 重置 input 以允许重复选择同一文件
