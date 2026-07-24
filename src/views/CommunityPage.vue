@@ -175,6 +175,7 @@ async function submitPost() {
     tag: newTag.value
   }).select().single()
   if (!error && data) {
+    data.avatar_url = user.value.avatar_url || ''
     data._comments = []
     data._showComments = false
     data._replyText = ''
