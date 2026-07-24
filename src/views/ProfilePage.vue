@@ -300,13 +300,6 @@ async function loadHistory() {
       chars: d.chars,
       time: new Date(d.created_at).toLocaleString('zh-CN')
     }))
-  } else {
-    historyItems.value = [
-      { chars: '日 月 山', time: '2026-07-20 15:42' },
-      { chars: '雨 水', time: '2026-07-18 09:15' },
-      { chars: '龙', time: '2026-07-15 20:08' },
-      { chars: '人 天 大', time: '2026-07-12 14:30' },
-    ]
   }
 }
 
