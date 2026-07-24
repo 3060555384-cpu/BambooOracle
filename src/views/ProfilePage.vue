@@ -15,7 +15,7 @@
         <div class="profile-card">
           <div class="profile-avatar-wrap">
             <label class="profile-avatar-clickable" title="点击更换头像">
-              <img v-if="user.avatar_url" :src="user.avatar_url" class="profile-avatar-img" alt="头像" />
+              <img v-if="user.avatar_url" :src="displayAvatar" class="profile-avatar-img" alt="头像" />
               <div v-else class="profile-avatar seal-lg">甲</div>
               <input
                 ref="avatarInputRef"
@@ -156,7 +156,7 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase, uploadAvatar } from '../lib/supabase'
-import { currentUser, setCurrentUser, logoutUser, recoverUser } from '../lib/auth'
+import { currentUser, setCurrentUser, logoutUser, recoverUser, avatarVersion, bumpAvatarVersion } from '../lib/auth'
 
 const router = useRouter()
 
@@ -171,6 +171,11 @@ const nickInputRef = ref<HTMLInputElement>()
 // 头像上传
 const avatarInputRef = ref<HTMLInputElement>()
 const uploadingAvatar = ref(false)
+
+const displayAvatar = computed(() => {
+  if (!user.value?.avatar_url) return ''
+  return user.value.avatar_url + '?v=' + avatarVersion.value
+})
 
 async function handleAvatarChange(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
@@ -194,6 +199,7 @@ async function handleAvatarChange(e: Event) {
     const url = await uploadAvatar(user.value.id, file)
     if (url) {
       setCurrentUser({ ...user.value, avatar_url: url })
+        bumpAvatarVersion()
       const { error: dbErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.value.id)
       if (dbErr) {
         alert('保存头像失败: ' + dbErr.message)

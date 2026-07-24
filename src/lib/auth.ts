@@ -29,6 +29,13 @@ function readCachedUser(): BambooUser | null {
 // 之后只有 logoutUser() 能把这个值设为 null
 export const currentUser = ref<BambooUser | null>(readCachedUser())
 
+// 头像版本号：每次更换头像后递增，用于强制浏览器刷新缓存
+export const avatarVersion = ref(Date.now())
+
+export function bumpAvatarVersion() {
+  avatarVersion.value = Date.now()
+}
+
 export function setCurrentUser(u: BambooUser | null) {
   const prev = currentUser.value
   if (prev && u && prev.id === u.id && prev.email === u.email && prev.nickname === u.nickname && prev.avatar_url === u.avatar_url) return

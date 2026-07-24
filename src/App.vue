@@ -58,7 +58,7 @@
             <span>登录</span>
           </router-link>
           <div v-else class="nav-user" @click="showUserMenu = !showUserMenu">
-            <img v-if="user.avatar_url" :src="user.avatar_url" class="nav-user-avatar" alt="头像" />
+            <img v-if="user.avatar_url" :src="navAvatarUrl" class="nav-user-avatar" alt="头像" />
             <span v-else class="nav-user-initial">甲</span>
             <span class="nav-user-name">{{ user?.nickname || '用户' }}</span>
             <div v-if="showUserMenu" class="user-dropdown">
@@ -89,15 +89,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { currentUser, refreshUser, initAuthListener, logoutUser } from './lib/auth'
+import { currentUser, refreshUser, initAuthListener, logoutUser, avatarVersion } from './lib/auth'
 
 const year = new Date().getFullYear()
 const menuOpen = ref(false)
 const showUserMenu = ref(false)
 // 全局统一登录状态（模块加载时已从 localStorage 同步恢复，页面秒开不闪烁）
 const user = currentUser
+
+const navAvatarUrl = computed(() => {
+  if (!user.value?.avatar_url) return ''
+  return user.value.avatar_url + '?v=' + avatarVersion.value
+})
 const searchQuery = ref('')
 const searchFocused = ref(false)
 const inkCanvas = ref<HTMLCanvasElement>()
