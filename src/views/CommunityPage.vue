@@ -10,8 +10,10 @@
     </div>
     <div v-if="user" class="post-form">
       <div class="post-form-top">
-        <img v-if="user.avatar_url" :src="user.avatar_url + '?v=' + avatarVersion" class="my-avatar" alt="" />
-        <span v-else class="my-avatar my-avatar-default">&#128100;</span>
+        <button class="avatar-click-btn" data-avatar-preview>
+          <img v-if="user.avatar_url" :src="user.avatar_url + '?v=' + avatarVersion" class="my-avatar" alt="" />
+          <span v-else class="my-avatar my-avatar-default">&#128100;</span>
+        </button>
         <div class="post-form-top-right">
           <select v-model="newTag" class="form-tag-select">
             <option v-for="t in allTags" :key="t" :value="t">{{ t }}</option>
@@ -35,8 +37,10 @@
       <article v-for="post in filteredPosts" :key="post.id" class="post-card">
         <div class="post-head">
           <div class="post-user">
-            <img v-if="post.avatar_url" :src="post.avatar_url + '?v=' + avatarVersion" class="post-avatar-img" alt="" />
-            <span v-else class="post-avatar">&#128100;</span>
+            <button class="avatar-click-btn" data-avatar-preview>
+              <img v-if="post.avatar_url" :src="post.avatar_url + '?v=' + avatarVersion" class="post-avatar-img" alt="" />
+              <span v-else class="post-avatar">&#128100;</span>
+            </button>
             <div>
               <span class="post-author">{{ post.author }}</span>
               <span class="post-time">{{ formatTime(post.created_at) }}</span>
@@ -61,8 +65,10 @@
         <div v-if="post._showComments" class="comments-section">
           <div v-for="c in post._comments" :key="c.id" class="comment-item">
             <div class="comment-head">
-              <img v-if="c.avatar_url" :src="c.avatar_url + '?v=' + avatarVersion" class="comment-avatar-img" alt="" />
-              <span class="comment-author">{{ c.author }}</span>
+                <button class="avatar-click-btn avatar-click-btn-sm" data-avatar-preview>
+                  <img v-if="c.avatar_url" :src="c.avatar_url + '?v=' + avatarVersion" class="comment-avatar-img" alt="" />
+                </button>
+                <span class="comment-author">{{ c.author }}</span>
               <span v-if="c.reply_to_author" class="comment-reply-arrow">&#10148;</span>
               <span v-if="c.reply_to_author" class="comment-author comment-reply-to">{{ c.reply_to_author }}</span>
             </div>
@@ -104,6 +110,44 @@ const posting = ref(false)
 const loading = ref(true)
 const posts = ref<Post[]>([])
 const allTags = ['甲骨趣谈', '学术动态', '字形探源', '平台公告']
+
+// ====== 头像点击预览（原生 DOM 弹窗） ======
+
+function openAvatarModal(src: string) {
+  // 移除已存在的弹窗
+  const existing = document.querySelector('.avatar-modal-overlay')
+  if (existing) existing.remove()
+
+  const overlay = document.createElement('div')
+  overlay.className = 'avatar-modal-overlay'
+  overlay.innerHTML = `
+    <div class="avatar-modal-card">
+      <button class="avatar-modal-close">&times;</button>
+      <img src="${src}" class="avatar-modal-img" alt="头像大图" />
+    </div>`
+  overlay.addEventListener('click', (ev) => {
+    if (ev.target === overlay) overlay.remove()
+  })
+  overlay.querySelector('.avatar-modal-close')!.addEventListener('click', () => overlay.remove())
+  document.body.appendChild(overlay)
+}
+
+function onAvatarBtnClick(e: MouseEvent) {
+  const btn = (e.target as HTMLElement).closest('[data-avatar-preview]') as HTMLElement | null
+  if (!btn) return
+  const img = btn.querySelector('img')
+  if (!img) return
+  const src = img.src.replace(/\?v=\d+$/, '')
+  if (src) {
+    openAvatarModal(src)
+  }
+}
+
+onMounted(() => {
+  recoverUser()
+  loadPosts()
+  document.addEventListener('click', onAvatarBtnClick)
+})
 
 // 用户头像缓存
 const avatarMap = ref<Record<string, string>>({})
@@ -273,11 +317,6 @@ function sharePost(post: Post) {
   }
 }
 
-onMounted(() => {
-  recoverUser()
-  loadPosts()
-})
-
 // 监听当前用户头像变化，全局同步到社群所有帖子和评论
 watch(() => currentUser.value?.avatar_url, (newUrl) => {
   if (!user.value) return
@@ -314,8 +353,11 @@ watch(() => currentUser.value?.nickname, (newName) => {
 .tag-pill.active{background:var(--gold);color:#fff;border-color:var(--gold)}
 .post-form{background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:20px;box-shadow:var(--shadow)}
 .post-form-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.my-avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--paper-dark);flex-shrink:0}
-.my-avatar-default{display:flex;align-items:center;justify-content:center;font-size:1.4rem;background:var(--paper);color:var(--ink-wash)}
+.avatar-click-btn{background:none;border:none;padding:0;cursor:pointer;flex-shrink:0;line-height:0}
+.avatar-click-btn-sm{line-height:0}
+.my-avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--paper-dark);flex-shrink:0;transition:transform .2s}
+.my-avatar:hover{transform:scale(1.1)}
+.my-avatar-default{display:flex;align-items:center;justify-content:center;font-size:1.4rem;background:var(--paper);color:var(--ink-wash);cursor:pointer}
 .post-form-top-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .login-hint{text-align:center;padding:28px!important}
 .login-hint p{color:var(--ink-wash);font-size:.9rem}
@@ -335,7 +377,9 @@ watch(() => currentUser.value?.nickname, (newName) => {
 .post-user{display:flex;align-items:center;gap:10px}
 .post-avatar{font-size:2rem;line-height:1}
 .post-avatar-img{width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--paper-dark)}
+.post-avatar-img:hover{transform:scale(1.15);box-shadow:0 2px 8px rgba(0,0,0,0.15)}
 .comment-avatar-img{width:20px;height:20px;border-radius:50%;object-fit:cover;border:1px solid var(--paper-dark);flex-shrink:0}
+.comment-avatar-img:hover{transform:scale(1.25)}
 .post-author{display:block;font-weight:bold;color:var(--ink);font-size:.95rem;letter-spacing:1px}
 .post-time{display:block;font-size:.75rem;color:var(--ink-wash)}
 .post-head-right{display:flex;align-items:center;gap:8px}
@@ -371,5 +415,39 @@ watch(() => currentUser.value?.nickname, (newName) => {
 .comment-btn{padding:6px 16px!important;font-size:.8rem!important}
 .empty-state{text-align:center;padding:40px 20px;color:var(--ink-wash)}
 .empty-state a{color:var(--gold)}
+
 @media(max-width:600px){.post-head{flex-direction:column;gap:8px}}
+</style>
+
+<!-- 头像弹窗样式（非 scoped，追加到 body 的元素需要全局样式） -->
+<style>
+.avatar-modal-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  animation: amFadeIn .2s ease;
+}
+@keyframes amFadeIn { from { opacity: 0 } to { opacity: 1 } }
+.avatar-modal-card {
+  position: relative;
+  background: #fff; border-radius: 16px;
+  padding: 36px; box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+  max-width: 90vw;
+  animation: amZoomIn .25s ease;
+}
+@keyframes amZoomIn { from { transform: scale(0.85); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+.avatar-modal-close {
+  position: absolute; top: 10px; right: 14px;
+  background: none; border: none; color: #999;
+  font-size: 28px; cursor: pointer; line-height: 1;
+  padding: 4px; transition: color .2s;
+}
+.avatar-modal-close:hover { color: #c04040 }
+.avatar-modal-img {
+  display: block; max-width: min(320px, 70vw);
+  max-height: min(320px, 60vh);
+  border-radius: 50%; object-fit: cover;
+  border: 3px solid #b8860b;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+}
 </style>

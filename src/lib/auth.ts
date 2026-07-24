@@ -36,6 +36,16 @@ export function bumpAvatarVersion() {
   avatarVersion.value = Date.now()
 }
 
+// ====== 全局头像预览（通过原生 CustomEvent，避免跨模块响应式问题） ======
+export function openAvatarPreview(url: string, name?: string) {
+  if (!url) return
+  window.dispatchEvent(new CustomEvent('bamboo:avatar-preview', { detail: { url, name: name || '' } }))
+}
+
+export function closeAvatarPreview() {
+  window.dispatchEvent(new CustomEvent('bamboo:avatar-preview-close'))
+}
+
 export function setCurrentUser(u: BambooUser | null) {
   const prev = currentUser.value
   if (prev && u && prev.id === u.id && prev.email === u.email && prev.nickname === u.nickname && prev.avatar_url === u.avatar_url) return

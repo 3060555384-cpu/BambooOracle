@@ -82,6 +82,15 @@
         <p>竹下问甲 &copy; {{ year }} &mdash; 传承甲骨文明，探索文字之源</p>
       </div>
     </footer>
+    <Teleport to="body">
+      <div v-if="previewUrl" class="avatar-preview-overlay" @click="hidePreview">
+        <div class="avatar-preview-card" @click.stop>
+          <button class="avatar-preview-close" @click="hidePreview">&times;</button>
+          <img :src="previewUrl" class="avatar-preview-img" alt="头像大图" />
+          <div v-if="previewName" class="avatar-preview-name">{{ previewName }}</div>
+        </div>
+      </div>
+    </Teleport>
     <button v-show="showTop" class="scroll-top" @click="scrollToTop" title="回到顶部">
       <span class="scroll-top-seal">甲</span>
     </button>
@@ -98,6 +107,18 @@ const menuOpen = ref(false)
 const showUserMenu = ref(false)
 // 全局统一登录状态（模块加载时已从 localStorage 同步恢复，页面秒开不闪烁）
 const user = currentUser
+
+// ====== 头像预览（监听 CustomEvent） ======
+const previewUrl = ref('')
+const previewName = ref('')
+function showPreview(url: string, name: string) {
+  previewUrl.value = url
+  previewName.value = name
+}
+function hidePreview() {
+  previewUrl.value = ''
+  previewName.value = ''
+}
 
 const navAvatarUrl = computed(() => {
   if (!user.value?.avatar_url) return ''
@@ -248,6 +269,8 @@ router.afterEach(() => { menuOpen.value = false })
 
 let unsubAuth: (() => void) | undefined
 let docClickHandler: ((e: Event) => void) | undefined
+let onAvatarPreview: ((e: Event) => void) | undefined
+let onAvatarPreviewClose: (() => void) | undefined
 
 onMounted(() => {
   unsubAuth = initAuthListener()
@@ -258,6 +281,14 @@ onMounted(() => {
     if (showUserMenu.value && !(e.target as HTMLElement).closest('.nav-user')) showUserMenu.value = false
   }
   document.addEventListener('click', docClickHandler)
+  // 头像预览事件监听
+  onAvatarPreview = (e: Event) => {
+    const { url, name } = (e as CustomEvent).detail
+    showPreview(url, name)
+  }
+  onAvatarPreviewClose = () => hidePreview()
+  window.addEventListener('bamboo:avatar-preview', onAvatarPreview)
+  window.addEventListener('bamboo:avatar-preview-close', onAvatarPreviewClose)
 })
 
 onUnmounted(() => {
@@ -265,6 +296,8 @@ onUnmounted(() => {
   cleanupInk()
   unsubAuth?.()
   if (docClickHandler) document.removeEventListener('click', docClickHandler)
+  if (onAvatarPreview) window.removeEventListener('bamboo:avatar-preview', onAvatarPreview)
+  if (onAvatarPreviewClose) window.removeEventListener('bamboo:avatar-preview-close', onAvatarPreviewClose)
 })
 </script>
 
@@ -314,4 +347,42 @@ onUnmounted(() => {
 .scroll-top-seal{font-family:'KaiTi','STKaiti',serif;font-size:20px;color:var(--cinnabar-light);font-weight:bold}
 .ink-canvas{position:fixed;inset:0;z-index:50;pointer-events:none}
 @media(max-width:900px){.hamburger{display:flex}.nav-links{position:fixed;top:64px;left:0;right:0;background:rgba(26,26,26,.97);flex-direction:column;gap:0;padding:12px 0;transform:translateY(-120%);transition:transform .3s ease;backdrop-filter:blur(10px);border-bottom:1px solid var(--gold);z-index:100}.nav-links.open{transform:translateY(0)}.nav-link{padding:14px 28px;border-radius:0;border:none}.nav-search-wrap{display:block;max-width:none;margin:8px 20px 4px}}
+</style>
+
+<!-- 头像预览弹窗样式（非 scoped，确保 Teleport 到 body 后样式生效） -->
+<style>
+.avatar-preview-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn .25s ease;
+}
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+.avatar-preview-card {
+  position: relative;
+  background: #fff; border-radius: 12px;
+  padding: 32px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  max-width: 90vw; max-height: 85vh;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  animation: zoomIn .3s ease;
+}
+@keyframes zoomIn { from { opacity: 0; transform: scale(0.85) } to { opacity: 1; transform: scale(1) } }
+.avatar-preview-close {
+  position: absolute; top: 8px; right: 12px;
+  background: none; border: none; color: #888;
+  font-size: 1.6rem; cursor: pointer; line-height: 1; padding: 4px;
+  transition: color .2s;
+}
+.avatar-preview-close:hover { color: #c04040 }
+.avatar-preview-img {
+  width: auto; height: auto;
+  max-width: min(360px, 75vw); max-height: min(360px, 60vh);
+  border-radius: 50%; object-fit: cover;
+  border: 3px solid #b8860b;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+}
+.avatar-preview-name {
+  font-family: 'KaiTi','STKaiti',serif; font-size: 1.1rem;
+  color: #333; letter-spacing: 2px;
+}
 </style>

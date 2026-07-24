@@ -14,9 +14,13 @@
       <section class="profile-hero">
         <div class="profile-card">
           <div class="profile-avatar-wrap">
-            <label class="profile-avatar-clickable" title="点击更换头像">
-              <img v-if="user.avatar_url" :src="displayAvatar" class="profile-avatar-img" alt="头像" />
-              <div v-else class="profile-avatar seal-lg">甲</div>
+              <div class="profile-avatar-area">
+                <button class="avatar-click-btn" data-avatar-preview>
+                  <img v-if="user.avatar_url" :src="displayAvatar" class="profile-avatar-img" alt="头像" />
+                  <div v-else class="profile-avatar seal-lg">甲</div>
+                </button>
+              </div>
+              <label class="profile-avatar-upload-btn">
               <input
                 ref="avatarInputRef"
                 type="file"
@@ -162,6 +166,26 @@ const router = useRouter()
 
 // 直接引用模块级全局登录状态（ES 模块单例，与 App.vue 同一个 ref 引用，不可能分叉）
 const user = currentUser
+
+// ====== 头像预览（原生事件） ======
+function onAvatarBtnClick(e: MouseEvent) {
+  const btn = (e.target as HTMLElement).closest('[data-avatar-preview]') as HTMLElement | null
+  if (!btn) return
+  const img = btn.querySelector('img')
+  if (!img) return
+  const src = img.src.replace(/\?v=\d+$/, '')
+  if (src) {
+    // 原生 DOM 弹窗
+    const existing = document.querySelector('.avatar-modal-overlay')
+    if (existing) existing.remove()
+    const overlay = document.createElement('div')
+    overlay.className = 'avatar-modal-overlay'
+    overlay.innerHTML = `<div class="avatar-modal-card"><button class="avatar-modal-close">&times;</button><img src="${src}" class="avatar-modal-img" alt="头像大图" /></div>`
+    overlay.addEventListener('click', (ev) => { if (ev.target === overlay) overlay.remove() })
+    overlay.querySelector('.avatar-modal-close')!.addEventListener('click', () => overlay.remove())
+    document.body.appendChild(overlay)
+  }
+}
 
 // 昵称编辑
 const editingNick = ref(false)
@@ -319,10 +343,8 @@ watch(user, (newUser) => {
 }, { immediate: true })
 
 onMounted(() => {
-  // 兜底：如果 currentUser 被 Supabase 事件意外清空（SIGNED_OUT 误触发等），
-  // 立即从 localStorage 抢救回来，确保页面不会闪"请先登录"
   recoverUser()
-  // user 的 watch(immediate) 已处理数据加载
+  document.addEventListener('click', onAvatarBtnClick)
 })
 </script>
 
@@ -391,13 +413,11 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
 }
-.profile-avatar-clickable {
+.profile-avatar-area {
   cursor: pointer;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
+}
+.avatar-click-btn {
+  background: none; border: none; padding: 0; cursor: pointer; line-height: 0;
 }
 .profile-avatar-img {
   width: 64px;
@@ -405,29 +425,33 @@ onMounted(() => {
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--gold);
-  transition: opacity .3s;
+  transition: transform .3s, box-shadow .3s;
 }
-.profile-avatar-clickable:hover .profile-avatar-img {
-  opacity: .8;
+.avatar-click-btn:hover .profile-avatar-img {
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(184,134,11,0.3);
+}
+.avatar-click-btn:hover .profile-avatar {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.profile-avatar-upload-btn {
+  cursor: pointer;
+  position: relative;
+  display: inline-block;
 }
 .avatar-file-input {
   position: absolute;
   inset: 0;
   opacity: 0;
   cursor: pointer;
-  width: 64px;
-  height: 64px;
 }
 .profile-avatar-hint {
   font-size: .7rem;
   color: var(--ink-wash);
-  opacity: 0;
-  transition: opacity .3s;
+  transition: color .3s;
 }
-.profile-avatar-clickable:hover .profile-avatar-hint {
-  opacity: 1;
-}
-.profile-avatar-clickable:hover .profile-avatar-hint {
+.profile-avatar-upload-btn:hover .profile-avatar-hint {
   color: var(--gold);
 }
 .profile-avatar {
@@ -445,10 +469,6 @@ onMounted(() => {
   flex-shrink: 0;
   border-radius: 50%;
   transition: all .3s;
-}
-.profile-avatar-clickable:hover .profile-avatar {
-  border-color: var(--gold);
-  color: var(--gold);
 }
 .profile-role-tag {
   font-size: .7rem;
@@ -755,5 +775,38 @@ onMounted(() => {
     align-items: flex-start;
     gap: 8px;
   }
+}
+</style>
+
+<!-- 头像弹窗样式（非 scoped） -->
+<style>
+.avatar-modal-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  animation: amFadeIn .2s ease;
+}
+@keyframes amFadeIn { from { opacity: 0 } to { opacity: 1 } }
+.avatar-modal-card {
+  position: relative;
+  background: #fff; border-radius: 16px;
+  padding: 36px; box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+  max-width: 90vw;
+  animation: amZoomIn .25s ease;
+}
+@keyframes amZoomIn { from { transform: scale(0.85); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+.avatar-modal-close {
+  position: absolute; top: 10px; right: 14px;
+  background: none; border: none; color: #999;
+  font-size: 28px; cursor: pointer; line-height: 1;
+  padding: 4px; transition: color .2s;
+}
+.avatar-modal-close:hover { color: #c04040 }
+.avatar-modal-img {
+  display: block; max-width: min(320px, 70vw);
+  max-height: min(320px, 60vh);
+  border-radius: 50%; object-fit: cover;
+  border: 3px solid #b8860b;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
 }
 </style>
