@@ -6,7 +6,7 @@
       <hr class="ink-divider" />
     </div>
     <div class="upload-area" @dragover.prevent @drop.prevent="handleDrop" :class="{ 'has-image': previewUrl }">
-      <input type="file" ref="fileInput" accept="image/*" @change="handleFile" style="display:none" />
+      <input type="file" ref="fileInput" id="recognize-file" name="image" accept="image/*" @change="handleFile" style="display:none" />
       <div v-if="!previewUrl" class="upload-placeholder" @click="triggerUpload">
         <div class="upload-frame">
           <div class="upload-seal">甲</div>

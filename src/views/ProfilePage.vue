@@ -24,6 +24,8 @@
               <input
                 ref="avatarInputRef"
                 type="file"
+                id="avatar-file"
+                name="avatar"
                 accept="image/jpeg,image/png,image/gif,image/webp"
                 class="avatar-file-input"
                 @change="handleAvatarChange"
