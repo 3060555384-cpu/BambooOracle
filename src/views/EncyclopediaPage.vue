@@ -7,65 +7,62 @@
       <hr class="ink-divider" />
     </div>
 
-    <!-- DeepSeek AI 问答 -->
-    <section class="ency-section">
-      <div class="section-header" @click="toggle('ai')">
-        <span class="section-icon">&#x1F916;</span>
+    <!-- DeepSeek AI 问答（固定展示，不可折叠） -->
+    <section class="ai-section">
+      <div class="ai-section-header">
+        <span class="ai-section-icon">&#x1F916;</span>
         <h2>AI 智能问答</h2>
-        <span class="section-arrow" :class="{ open: sections.ai }">&#x25BC;</span>
       </div>
-      <div class="section-body" v-show="sections.ai">
-        <div class="ai-chat-box">
-          <!-- 对话区 -->
-          <div class="ai-messages" ref="msgContainer">
-            <div v-if="chatMessages.length === 0" class="ai-welcome">
-              <p>向 AI 提问任何甲骨文相关的问题，DeepSeek 将为你专业解答。</p>
-            </div>
-            <div
-              v-for="(msg, i) in chatMessages"
-              :key="i"
-              class="ai-msg"
-              :class="msg.role"
-            >
-              <span class="ai-msg-label">{{ msg.role === 'user' ? '你' : 'AI' }}</span>
-              <div class="ai-msg-text">{{ msg.content }}</div>
-            </div>
-            <div v-if="loading" class="ai-msg assistant typing">
-              <span class="ai-msg-label">AI</span>
-              <div class="ai-msg-text">
-                <span class="typing-dots"><i></i><i></i><i></i></span>
-              </div>
+      <div class="ai-chat-box">
+        <!-- 对话区 -->
+        <div class="ai-messages" ref="msgContainer">
+          <div v-if="chatMessages.length === 0" class="ai-welcome">
+            <p>向 AI 提问任何甲骨文相关的问题，DeepSeek 将为你专业解答。</p>
+          </div>
+          <div
+            v-for="(msg, i) in chatMessages"
+            :key="i"
+            class="ai-msg"
+            :class="msg.role"
+          >
+            <span class="ai-msg-label">{{ msg.role === 'user' ? '你' : 'AI' }}</span>
+            <div class="ai-msg-text">{{ msg.content }}</div>
+          </div>
+          <div v-if="loading" class="ai-msg assistant typing">
+            <span class="ai-msg-label">AI</span>
+            <div class="ai-msg-text">
+              <span class="typing-dots"><i></i><i></i><i></i></span>
             </div>
           </div>
-          <!-- 输入区 -->
-          <div class="ai-input-row">
-            <input
-              v-model="inputQuestion"
-              class="ai-input"
-              placeholder="输入你想了解的甲骨文问题..."
-              maxlength="200"
-              @keydown.enter.prevent="askAI"
-              :disabled="loading"
-            />
-            <button
-              class="ai-send-btn"
-              :disabled="loading || !inputQuestion.trim()"
-              @click="askAI"
-            >发送</button>
-          </div>
-          <!-- 快捷提问 -->
-          <div class="ai-quick-asks">
-            <button
-              v-for="q in quickQuestions"
-              :key="q"
-              class="ai-quick-btn"
-              :disabled="loading"
-              @click="inputQuestion = q; askAI()"
-            >{{ q }}</button>
-          </div>
-          <!-- 清空对话 -->
-          <button v-if="chatMessages.length > 0" class="ai-clear-btn" @click="chatMessages = []">清空对话</button>
         </div>
+        <!-- 输入区 -->
+        <div class="ai-input-row">
+          <input
+            v-model="inputQuestion"
+            class="ai-input"
+            placeholder="输入你想了解的甲骨文问题..."
+            maxlength="200"
+            @keydown.enter.prevent="askAI"
+            :disabled="loading"
+          />
+          <button
+            class="ai-send-btn"
+            :disabled="loading || !inputQuestion.trim()"
+            @click="askAI"
+          >发送</button>
+        </div>
+        <!-- 快捷提问 -->
+        <div class="ai-quick-asks">
+          <button
+            v-for="q in quickQuestions"
+            :key="q"
+            class="ai-quick-btn"
+            :disabled="loading"
+            @click="inputQuestion = q; askAI()"
+          >{{ q }}</button>
+        </div>
+        <!-- 清空对话 -->
+        <button v-if="chatMessages.length > 0" class="ai-clear-btn" @click="chatMessages = []">清空对话</button>
       </div>
     </section>
 
@@ -194,7 +191,6 @@
 import { reactive, ref, nextTick } from 'vue'
 
 interface SectionState {
-  ai: boolean
   overview: boolean
   liushu: boolean
   scholars: boolean
@@ -220,7 +216,6 @@ interface Scholar {
 }
 
 const sections = reactive<SectionState>({
-  ai: true,
   overview: false,
   liushu: false,
   scholars: false,
@@ -423,8 +418,12 @@ const scholars: Scholar[] = [
 .ink-quote p{font-family:'KaiTi','STKaiti',serif;font-size:1rem;color:var(--ink);line-height:2.2;letter-spacing:1px;margin-bottom:16px}
 .ink-quote cite{font-size:.85rem;color:var(--ink-wash);font-style:normal;letter-spacing:2px}
 
-/* === AI 智能问答 === */
-.ai-chat-box{background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+/* === AI 智能问答（固定展示） === */
+.ai-section{margin-bottom:24px}
+.ai-section-header{display:flex;align-items:center;gap:14px;padding:18px 24px;background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-md) var(--radius-md) 0 0;box-shadow:var(--shadow);user-select:none}
+.ai-section-icon{font-size:1.4rem;flex-shrink:0}
+.ai-section-header h2{font-family:'KaiTi','STKaiti',serif;font-size:1.2rem;color:var(--ink);letter-spacing:3px;flex:1;margin:0}
+.ai-chat-box{background:#fff;border:1px solid var(--paper-dark);border-top:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
 .ai-messages{max-height:420px;overflow-y:auto;padding:24px 28px 12px;scroll-behavior:smooth}
 .ai-messages::-webkit-scrollbar{width:6px}
 .ai-messages::-webkit-scrollbar-thumb{background:var(--paper-dark);border-radius:3px}
