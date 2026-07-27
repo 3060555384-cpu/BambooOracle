@@ -2,8 +2,15 @@
   "buildCommand": null,
   "outputDirectory": "dist",
   "framework": null,
+  "functions": {
+    "api/deepseek.ts": {
+      "memory": 512,
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     { "source": "/supabase/:path*", "destination": "https://quiet-wind-c950.3060555384.workers.dev/:path*" },
+    { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -7,6 +7,68 @@
       <hr class="ink-divider" />
     </div>
 
+    <!-- DeepSeek AI 问答 -->
+    <section class="ency-section">
+      <div class="section-header" @click="toggle('ai')">
+        <span class="section-icon">&#x1F916;</span>
+        <h2>AI 智能问答</h2>
+        <span class="section-arrow" :class="{ open: sections.ai }">&#x25BC;</span>
+      </div>
+      <div class="section-body" v-show="sections.ai">
+        <div class="ai-chat-box">
+          <!-- 对话区 -->
+          <div class="ai-messages" ref="msgContainer">
+            <div v-if="chatMessages.length === 0" class="ai-welcome">
+              <p>向 AI 提问任何甲骨文相关的问题，DeepSeek 将为你专业解答。</p>
+            </div>
+            <div
+              v-for="(msg, i) in chatMessages"
+              :key="i"
+              class="ai-msg"
+              :class="msg.role"
+            >
+              <span class="ai-msg-label">{{ msg.role === 'user' ? '你' : 'AI' }}</span>
+              <div class="ai-msg-text">{{ msg.content }}</div>
+            </div>
+            <div v-if="loading" class="ai-msg assistant typing">
+              <span class="ai-msg-label">AI</span>
+              <div class="ai-msg-text">
+                <span class="typing-dots"><i></i><i></i><i></i></span>
+              </div>
+            </div>
+          </div>
+          <!-- 输入区 -->
+          <div class="ai-input-row">
+            <input
+              v-model="inputQuestion"
+              class="ai-input"
+              placeholder="输入你想了解的甲骨文问题..."
+              maxlength="200"
+              @keydown.enter.prevent="askAI"
+              :disabled="loading"
+            />
+            <button
+              class="ai-send-btn"
+              :disabled="loading || !inputQuestion.trim()"
+              @click="askAI"
+            >发送</button>
+          </div>
+          <!-- 快捷提问 -->
+          <div class="ai-quick-asks">
+            <button
+              v-for="q in quickQuestions"
+              :key="q"
+              class="ai-quick-btn"
+              :disabled="loading"
+              @click="inputQuestion = q; askAI()"
+            >{{ q }}</button>
+          </div>
+          <!-- 清空对话 -->
+          <button v-if="chatMessages.length > 0" class="ai-clear-btn" @click="chatMessages = []">清空对话</button>
+        </div>
+      </div>
+    </section>
+
     <!-- Section 1: 甲骨文概述 -->
     <section class="ency-section">
       <div class="section-header" @click="toggle('overview')">
@@ -129,13 +191,19 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, ref, nextTick } from 'vue'
 
 interface SectionState {
+  ai: boolean
   overview: boolean
   liushu: boolean
   scholars: boolean
   yinxu: boolean
+}
+
+interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
 }
 
 interface LiushuItem {
@@ -152,7 +220,8 @@ interface Scholar {
 }
 
 const sections = reactive<SectionState>({
-  overview: true,
+  ai: true,
+  overview: false,
   liushu: false,
   scholars: false,
   yinxu: false
@@ -160,6 +229,61 @@ const sections = reactive<SectionState>({
 
 function toggle(key: keyof SectionState): void {
   sections[key] = !sections[key]
+}
+
+// --- AI 问答逻辑 ---
+const chatMessages = ref<ChatMessage[]>([])
+const inputQuestion = ref('')
+const loading = ref(false)
+const msgContainer = ref<HTMLElement | null>(null)
+
+const quickQuestions = [
+  '甲骨文是怎样被发现的？',
+  '什么是「六书」造字法？',
+  '商代人用什么工具刻写甲骨？',
+  '什么是「甲骨四堂」？'
+]
+
+async function askAI() {
+  const q = inputQuestion.value.trim()
+  if (!q || loading.value) return
+  chatMessages.value.push({ role: 'user', content: q })
+  inputQuestion.value = ''
+  loading.value = true
+  await nextTick()
+  scrollToBottom()
+
+  try {
+    const history = chatMessages.value
+      .slice(0, -1)
+      .map(m => ({ role: m.role, content: m.content }))
+
+    const res = await fetch('/api/deepseek', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q, history })
+    })
+
+    const data = await res.json()
+    if (data.reply) {
+      chatMessages.value.push({ role: 'assistant', content: data.reply })
+    } else {
+      chatMessages.value.push({ role: 'assistant', content: data.error || '出错了，请稍后重试。' })
+    }
+  } catch (err: any) {
+    chatMessages.value.push({ role: 'assistant', content: `网络错误：${err.message || '请检查网络连接'}` })
+  } finally {
+    loading.value = false
+    await nextTick()
+    scrollToBottom()
+  }
+}
+
+function scrollToBottom() {
+  const el = msgContainer.value
+  if (el) {
+    el.scrollTop = el.scrollHeight
+  }
 }
 
 
@@ -299,6 +423,47 @@ const scholars: Scholar[] = [
 .ink-quote p{font-family:'KaiTi','STKaiti',serif;font-size:1rem;color:var(--ink);line-height:2.2;letter-spacing:1px;margin-bottom:16px}
 .ink-quote cite{font-size:.85rem;color:var(--ink-wash);font-style:normal;letter-spacing:2px}
 
+/* === AI 智能问答 === */
+.ai-chat-box{background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+.ai-messages{max-height:420px;overflow-y:auto;padding:24px 28px 12px;scroll-behavior:smooth}
+.ai-messages::-webkit-scrollbar{width:6px}
+.ai-messages::-webkit-scrollbar-thumb{background:var(--paper-dark);border-radius:3px}
+.ai-welcome{text-align:center;padding:36px 0;color:var(--ink-wash);font-size:.95rem;letter-spacing:1px}
+.ai-msg{margin-bottom:16px;animation:msgIn .3s ease}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.ai-msg-label{display:inline-block;font-size:.72rem;font-weight:600;letter-spacing:2px;margin-bottom:4px;padding:2px 8px;border-radius:4px}
+.ai-msg.user .ai-msg-label{color:var(--ink);background:var(--paper-light)}
+.ai-msg.assistant .ai-msg-label{color:var(--gold-dark,#8b6914);background:rgba(184,134,11,.08)}
+.ai-msg-text{font-size:.92rem;line-height:1.85;color:var(--ink);padding:12px 16px;border-radius:var(--radius-md)}
+.ai-msg.user .ai-msg-text{background:var(--paper-light)}
+.ai-msg.assistant .ai-msg-text{background:rgba(184,134,11,.04);border-left:3px solid var(--gold-pale)}
+
+/* 打字动画 */
+.typing-dots{display:inline-flex;align-items:center;gap:5px;padding:4px 0}
+.typing-dots i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gold);animation:dotBounce 1.4s infinite ease-in-out}
+.typing-dots i:nth-child(2){animation-delay:.2s}
+.typing-dots i:nth-child(3){animation-delay:.4s}
+@keyframes dotBounce{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+
+/* 输入区 */
+.ai-input-row{display:flex;gap:10px;padding:16px 28px;border-top:1px solid var(--paper-dark);background:var(--paper-light)}
+.ai-input{flex:1;padding:10px 16px;border:1px solid var(--paper-dark);border-radius:var(--radius-sm);font-size:.92rem;color:var(--ink);background:#fff;outline:none;transition:border-color .2s;font-family:inherit}
+.ai-input:focus{border-color:var(--gold-pale)}
+.ai-input::placeholder{color:#ccc}
+.ai-send-btn{padding:10px 22px;background:var(--gold);color:#fff;border:none;border-radius:var(--radius-sm);font-size:.9rem;font-weight:600;letter-spacing:2px;cursor:pointer;transition:all .2s;white-space:nowrap;font-family:inherit}
+.ai-send-btn:hover:not(:disabled){background:var(--gold-dark,#8b6914)}
+.ai-send-btn:disabled{background:#ccc;cursor:not-allowed}
+
+/* 快捷提问 */
+.ai-quick-asks{display:flex;flex-wrap:wrap;gap:10px;padding:4px 28px 16px}
+.ai-quick-btn{padding:6px 16px;background:transparent;border:1px solid var(--gold-pale);border-radius:20px;color:var(--gold-dark,#8b6914);font-size:.82rem;letter-spacing:1px;cursor:pointer;transition:all .2s;white-space:nowrap;font-family:inherit}
+.ai-quick-btn:hover:not(:disabled){background:var(--gold-pale);color:#fff}
+.ai-quick-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* 清空按钮 */
+.ai-clear-btn{display:block;margin:0 auto 16px;padding:6px 20px;background:transparent;border:none;color:var(--ink-wash);font-size:.8rem;cursor:pointer;letter-spacing:1px;transition:color .2s;font-family:inherit}
+.ai-clear-btn:hover{color:var(--cinnabar-light,#c04040)}
+
 @media(max-width:768px){
   .overview-highlights{grid-template-columns:repeat(2,1fr);gap:12px}
   .liushu-grid{grid-template-columns:repeat(2,1fr)}
@@ -313,5 +478,9 @@ const scholars: Scholar[] = [
   .overview-highlights{grid-template-columns:1fr}
   .liushu-grid{grid-template-columns:1fr}
   .scholars-grid{grid-template-columns:1fr}
+  .ai-messages{padding:16px 14px 8px;max-height:320px}
+  .ai-input-row{padding:12px 14px}
+  .ai-quick-asks{padding:4px 14px 12px}
+  .ai-quick-btn{font-size:.76rem;padding:5px 12px}
 }
 </style>
