@@ -17,7 +17,7 @@
         <!-- 对话区 -->
         <div class="ai-messages" ref="msgContainer">
           <div v-if="chatMessages.length === 0" class="ai-welcome">
-            <p>向 AI 提问任何甲骨文相关的问题，DeepSeek 将为你专业解答。</p>
+            <p>竹下问甲，知无不言。甲骨之事，尽管来问。</p>
           </div>
           <div
             v-for="(msg, i) in chatMessages"
