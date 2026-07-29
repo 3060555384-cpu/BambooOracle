@@ -64,9 +64,11 @@
             <span v-else class="heart-empty">&#9825;</span>
           </button>
           <img v-if="(selected as any).rubbingImg" :src="(selected as any).rubbingImg" class="detail-rubbing-img" alt="" />
-          <div v-if="hasOracleGlyph(selected.char)" class="detail-char oracle">{{ toOracleChar(selected.char) }}</div>
-          <div v-else class="detail-char not-found">未收录</div>
-          <div class="detail-stamp">甲骨文</div>
+          <div class="detail-char-area">
+            <div v-if="hasOracleGlyph(selected.char)" class="detail-char oracle">{{ toOracleChar(selected.char) }}</div>
+            <div v-else class="detail-char not-found">未收录</div>
+            <div class="detail-stamp">甲骨文</div>
+          </div>
           <div class="detail-pinyin">{{ selected.pinyin }}</div>
           <h2 class="detail-title">{{ selected.meaning }}</h2>
           <hr class="ink-divider" />
@@ -80,10 +82,6 @@
                   <div class="stage-dot"></div>
                   <div class="stage-label">{{ stage.label }}</div>
                   <div class="stage-era">{{ stage.era }}</div>
-                  <div v-if="stage.key === 'oracle'">
-                    <div v-if="hasOracleGlyph(selected.char)" class="stage-char oracle">{{ toOracleChar(selected.char) }}</div>
-                    <div v-else class="stage-char not-found">未收录</div>
-                  </div>
                   <div class="stage-desc">{{ (selected.evolution as any)[stage.key] }}</div>
                 </div>
               </div>
@@ -1112,10 +1110,11 @@ const filteredChars = computed(() => {
 .bookmark-btn:hover .heart-empty{color:var(--cinnabar-light)}
 .bookmark-btn:hover .heart-full{transform:scale(1.2)}
 
-.detail-char{font-family:'KaiTi','STKaiti',serif;font-size:88px;color:#3d3522;line-height:1;margin-bottom:6px;background:radial-gradient(circle at 15% 25%,rgba(139,119,80,.08) 0%,transparent 45%),radial-gradient(circle at 85% 75%,rgba(139,119,80,.05) 0%,transparent 40%),linear-gradient(145deg,#f5ede0,#ece0cc 30%,#e6d8c0 60%,#f0e5d5);border:2px solid var(--gold-pale);border-radius:12px;box-shadow:inset 0 3px 6px rgba(0,0,0,.12),inset 0 -2px 0 rgba(255,255,255,.6),0 4px 12px var(--shadow);text-shadow:2px 2px 0 rgba(255,255,255,.45),-2px -1px 0 rgba(0,0,0,.18);padding:12px 24px;display:inline-block}
+.detail-char-area{display:flex;flex-direction:column;align-items:center;margin-bottom:6px}
+.detail-char{font-family:'KaiTi','STKaiti',serif;font-size:88px;color:#3d3522;line-height:1;margin-bottom:2px;background:radial-gradient(circle at 15% 25%,rgba(139,119,80,.08) 0%,transparent 45%),radial-gradient(circle at 85% 75%,rgba(139,119,80,.05) 0%,transparent 40%),linear-gradient(145deg,#f5ede0,#ece0cc 30%,#e6d8c0 60%,#f0e5d5);border:2px solid var(--gold-pale);border-radius:12px;box-shadow:inset 0 3px 6px rgba(0,0,0,.12),inset 0 -2px 0 rgba(255,255,255,.6),0 4px 12px var(--shadow);text-shadow:2px 2px 0 rgba(255,255,255,.45),-2px -1px 0 rgba(0,0,0,.18);padding:12px 24px;display:inline-block}
 .detail-char.oracle{font-family:'OracleBone','KaiTi','STKaiti',serif}
 .detail-char.not-found{font-size:32px;color:var(--ink-wash);padding:30px 24px}
-.detail-stamp{display:inline-block;font-size:12px;color:var(--cinnabar-light);border:1px solid var(--cinnabar-light);padding:2px 12px;font-family:'KaiTi','STKaiti',serif;letter-spacing:3px;margin-bottom:4px}
+.detail-stamp{display:inline-block;font-size:12px;color:var(--cinnabar-light);border:1px solid var(--cinnabar-light);padding:2px 12px;font-family:'KaiTi','STKaiti',serif;letter-spacing:3px;margin-top:4px}
 .detail-pinyin{font-size:1rem;color:var(--gold);letter-spacing:2px;margin-bottom:8px}
 .detail-title{font-family:'KaiTi','STKaiti',serif;font-size:1.4rem;color:var(--ink);letter-spacing:3px;margin-bottom:8px}
 
