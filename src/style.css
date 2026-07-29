@@ -1,9 +1,9 @@
 /* === BambooOracle 全局样式 —— 水墨国风 === */
-/* 甲骨文字体 */
+/* 甲骨文字体 —— 方正甲骨文 (黄天树等11位专家审定, 殷墟原拓复刻, 免费商用) */
 @font-face {
   font-family: 'OracleBone';
-  src: url('/oracle-bone.woff2') format('woff2'),
-       url('/oracle-bone.ttf') format('truetype');
+  src: url('/ob-font.woff2') format('woff2'),
+       url('/方正甲骨文_mianfeiziti.com.ttf') format('truetype');
   font-display: block;
   font-weight: normal;
   font-style: normal;

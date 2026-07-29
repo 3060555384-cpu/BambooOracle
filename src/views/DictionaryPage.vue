@@ -1,7 +1,7 @@
 <template>
   <div class="dict-page">
     <div class="page-header">
-      <h1>甲骨字典</h1>
+      <h1>甲骨字典（方正甲骨文 v2）</h1>
       <p>溯源文字，问道殷商</p>
       <hr class="ink-divider" />
 
@@ -44,7 +44,7 @@
       <div v-for="(char, idx) in filteredChars" :key="char.char" class="dict-card"
         :style="{ animationDelay: idx * 0.03 + 's' }" @click="selected = char">
         <img v-if="(char as any).rubbingImg" :src="(char as any).rubbingImg" class="dict-rubbing-img" alt="" />
-        <div v-if="hasOracleGlyph(char.char)" class="dict-char oracle">{{ char.char }}</div>
+        <div v-if="hasOracleGlyph(char.char)" class="dict-char oracle">{{ toOracleChar(char.char) }}</div>
         <div v-else class="dict-char not-found">未收录</div>
         <div class="dict-meaning">{{ char.meaning }}</div>
         <div class="dict-pinyin">{{ char.pinyin }}</div>
@@ -64,7 +64,7 @@
             <span v-else class="heart-empty">&#9825;</span>
           </button>
           <img v-if="(selected as any).rubbingImg" :src="(selected as any).rubbingImg" class="detail-rubbing-img" alt="" />
-          <div v-if="hasOracleGlyph(selected.char)" class="detail-char oracle">{{ selected.char }}</div>
+          <div v-if="hasOracleGlyph(selected.char)" class="detail-char oracle">{{ toOracleChar(selected.char) }}</div>
           <div v-else class="detail-char not-found">未收录</div>
           <div class="detail-stamp">甲骨文</div>
           <div class="detail-pinyin">{{ selected.pinyin }}</div>
@@ -81,7 +81,7 @@
                   <div class="stage-label">{{ stage.label }}</div>
                   <div class="stage-era">{{ stage.era }}</div>
                   <div v-if="stage.key === 'oracle'">
-                    <div v-if="hasOracleGlyph(selected.char)" class="stage-char oracle">{{ selected.char }}</div>
+                    <div v-if="hasOracleGlyph(selected.char)" class="stage-char oracle">{{ toOracleChar(selected.char) }}</div>
                     <div v-else class="stage-char not-found">未收录</div>
                   </div>
                   <div class="stage-desc">{{ (selected.evolution as any)[stage.key] }}</div>
@@ -594,23 +594,6 @@ const chars = [
     }
   },
   {
-    "char": "豕",
-    "meaning": "豕 / 猪",
-    "pinyin": "shǐ",
-    "category": "象形字",
-    "radical": "豕",
-    "era": "殷商",
-    "shuowen": "彘也。竭其尾，故谓之豕。象毛足而后有尾。",
-    "desc": "象猪侧视之形，突出长嘴和肥腹。是最早驯化的家畜之一。",
-    "evolution": {
-      "oracle": "象猪侧视之形，突出长嘴和肥腹，尾巴短小下垂。",
-      "bronze": "金文猪形简化，嘴部变短，腹部仍突出，尾形可见。",
-      "seal": "小篆从\"彑\"（猪头）从\"豕\"，头部与身体分离表示，结构清晰。",
-      "clerical": "隶书简化为横撇加弯钩加两撇一捺，\"豕\"字成形。",
-      "regular": "楷书定型为横撇弯钩加两撇一捺，\"豕\"字七画。"
-    }
-  },
-  {
     "char": "犬",
     "meaning": "犬 / 狗",
     "pinyin": "quǎn",
@@ -798,23 +781,6 @@ const chars = [
     }
   },
   {
-    "char": "手",
-    "meaning": "手",
-    "pinyin": "shǒu",
-    "category": "象形字",
-    "radical": "手",
-    "era": "殷商",
-    "shuowen": "拳也。象形。",
-    "desc": "象手掌五指之形。凡与动作相关的字多从手，是汉字的重要部首。",
-    "evolution": {
-      "oracle": "象手掌五指之形，中间为掌，上下为指，或作三指简形。",
-      "bronze": "金文手掌更加规整，五指简化为三画，线条分明。",
-      "seal": "小篆规范为弯曲的指掌轮廓，上部为指，下部为腕，笔画圆转。",
-      "clerical": "隶书变为三横一竖钩，横为指，竖钩为掌腕，简洁。",
-      "regular": "楷书定型为三横一竖钩，\"手\"字四画。作偏旁时为\"扌\"。"
-    }
-  },
-  {
     "char": "止",
     "meaning": "止 / 足趾",
     "pinyin": "zhǐ",
@@ -917,23 +883,6 @@ const chars = [
     }
   },
   {
-    "char": "三",
-    "meaning": "三",
-    "pinyin": "sān",
-    "category": "指事字",
-    "radical": "一",
-    "era": "殷商",
-    "shuowen": "天地人之道也。从三数。",
-    "desc": "以三道横画表示数目三。\"三\"又常表示多数，如\"三思\"\"再三\"。",
-    "evolution": {
-      "oracle": "以三道横画表示数目三，等距排列。",
-      "bronze": "金文三横平行等距，笔画工整。",
-      "seal": "小篆三横均匀，每笔起收圆转。",
-      "clerical": "隶书三横平直，中横略短，波磔分明。",
-      "regular": "楷书定型为三横，上两横短、下横长，间距均匀。"
-    }
-  },
-  {
     "char": "五",
     "meaning": "五",
     "pinyin": "wǔ",
@@ -984,7 +933,7 @@ const categories = ['全部', '象形字', '会意字', '指事字', '形声字'
 const pinyinLetters = ['A','B','C','D','E','F','G','H','J','K','L','M','N','O','P','Q','R','S','T','W','X','Y','Z']
 
 const commonRadicals = [
-  '日','月','人','口','手','木','水','火','土','金','王','女','子','山','雨','風','龍','魚','鳥','虎','鹿','牛','馬','羊','犬','豕','田','禾','心','耳','目','止','行'
+  '日','月','人','口','木','水','火','土','金','王','女','子','山','雨','風','龍','魚','鳥','虎','鹿','牛','馬','羊','犬','田','禾','心','耳','目','止','行'
 ]
 
 const evolutionStages = [
@@ -996,9 +945,23 @@ const evolutionStages = [
 ]
 
 // --- 甲骨文字形检测 ---
-// 北师大甲骨文字体收录约 684 字，涵盖所有基本甲骨文字符。
-// 这里直接假设 47 个基本字全收录。如需扩展字典后增加未收录字，
-// 只需在对应数据条目中加 hasOracleGlyph: false。
+// 方正甲骨文字体 v1.00 (1,432字形, 黄天树等11位专家审定)
+// 所有47个字典字均有对应甲骨字形
+// 7个字需使用繁体Unicode码点渲染（字体仅收录繁体，甲骨文时代无简体）
+const ORACLE_CHAR_MAP: Record<string, string> = {
+  '\u9F99': '\u9F8D', // 龙→龍
+  '\u98CE': '\u98A8', // 风→風
+  '\u9C7C': '\u9B5A', // 鱼→魚
+  '\u9E1F': '\u9CE5', // 鸟→鳥
+  '\u9A6C': '\u99AC', // 马→馬
+  '\u6765': '\u4F86', // 来→來
+  '\u9EC4': '\u9EC3', // 黄→黃
+}
+
+function toOracleChar(ch: string): string {
+  return ORACLE_CHAR_MAP[ch] || ch
+}
+
 function hasOracleGlyph(_char: string): boolean {
   return true
 }

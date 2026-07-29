@@ -157,7 +157,6 @@ const oracleEntries: OracleEntry[] = [
   { char: '\u725B', meaning: '牛', category: '象形字', desc: '象牛首正面之形，双角向上弯曲。' },
   { char: '\u7F8A', meaning: '羊', category: '象形字', desc: '象羊首正面之形，角向下弯曲。' },
   { char: '\u9A6C', meaning: '马', category: '象形字', desc: '象马侧视之形，突出长脸、鬃毛。' },
-  { char: '\u8C55', meaning: '豕 / 猪', category: '象形字', desc: '象猪侧视之形，突出长嘴和肥腹。' },
   { char: '\u72AC', meaning: '犬 / 狗', category: '象形字', desc: '象犬侧视张口之形。' },
   { char: '\u7530', meaning: '田 / 田地', category: '象形字', desc: '象纵横交错的田界。' },
   { char: '\u79BE', meaning: '禾 / 谷物', category: '象形字', desc: '上象谷穗下垂，下象根茎。' },
@@ -169,14 +168,12 @@ const oracleEntries: OracleEntry[] = [
   { char: '\u76EE', meaning: '目 / 眼睛', category: '象形字', desc: '象人眼之形，外框为眼眶，内为瞳仁。' },
   { char: '\u8033', meaning: '耳 / 耳朵', category: '象形字', desc: '象耳朵轮廓之形。' },
   { char: '\u53E3', meaning: '口 / 嘴巴', category: '象形字', desc: '象人口张开之形。' },
-  { char: '\u624B', meaning: '手', category: '象形字', desc: '象手掌五指之形。' },
   { char: '\u6B62', meaning: '止 / 足趾', category: '象形字', desc: '象脚掌和脚趾之形。' },
   { char: '\u884C', meaning: '行 / 行走', category: '象形字', desc: '象十字路口之形，本义为道路。' },
   { char: '\u6765', meaning: '来 / 到来', category: '象形字', desc: '本象麦穗之形，借为"往来"之"来"。' },
   { char: '\u51FA', meaning: '出 / 出去', category: '会意字', desc: '从止从凵，脚从坑中跨出。' },
   { char: '\u5165', meaning: '入 / 进入', category: '指事字', desc: '象尖锐物进入之形。' },
   { char: '\u4E00', meaning: '一', category: '指事字', desc: '以一道横画表示数目一。' },
-  { char: '\u4E09', meaning: '三', category: '指事字', desc: '以三道横画表示数目三。' },
   { char: '\u4E94', meaning: '五', category: '指事字', desc: '甲骨文"五"作X形交叉。' },
   { char: '\u5341', meaning: '十', category: '指事字', desc: '以一竖画表示数目十。' },
 ]
@@ -184,13 +181,24 @@ const oracleEntries: OracleEntry[] = [
 const oracleMap = new Map<string, OracleEntry>()
 oracleEntries.forEach(function(e) { oracleMap.set(e.char, e) })
 
+// 方正甲骨文字体：7个字需用繁体码点渲染
+const ORACLE_CHAR_MAP: Record<string, string> = {
+  '\u9F99': '\u9F8D', // 龙→龍
+  '\u98CE': '\u98A8', // 风→風
+  '\u9C7C': '\u9B5A', // 鱼→魚
+  '\u9E1F': '\u9CE5', // 鸟→鳥
+  '\u9A6C': '\u99AC', // 马→馬
+  '\u6765': '\u4F86', // 来→來
+  '\u9EC4': '\u9EC3', // 黄→黃
+}
+
 const chars = computed<OutputChar[]>(function() {
   return inputText.value.split('').map(function(ch) {
     var entry = oracleMap.get(ch)
     if (entry) {
       return {
         char: ch,
-        display: ch,
+        display: ORACLE_CHAR_MAP[ch] || ch,
         included: true,
         meaning: entry.meaning
       }
