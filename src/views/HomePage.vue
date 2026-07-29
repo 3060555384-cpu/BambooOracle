@@ -13,9 +13,9 @@
       </div>
       <div class="hero-content" :class="{ visible: heroVisible }">
         <div class="hero-char-row">
-          <span class="hero-oracle char-1">&#40845;</span>
-          <span class="hero-oracle char-2">&#23665;</span>
-          <span class="hero-oracle char-3">&#27700;</span>
+          <span class="hero-oracle char-1">龍</span>
+          <span class="hero-oracle char-2">山</span>
+          <span class="hero-oracle char-3">水</span>
         </div>
         <h1 class="hero-title">竹下问甲</h1>
         <hr class="ink-divider" />
@@ -51,7 +51,7 @@
         </div>
         <div class="daily-card">
           <div class="daily-char-wrap">
-            <span class="daily-char" :class="{ pulse: dailyVisible }">{{ dailyWord.char }}</span>
+            <span class="daily-char" :class="{ pulse: dailyVisible }">{{ dailyOracleChar }}</span>
             <span class="daily-char-seal">甲骨</span>
             <button class="daily-bookmark-btn"
               :class="{ bookmarked: isBookmarked(dailyWord.char) }"
@@ -197,6 +197,21 @@ const dc = [
 ]
 const dailyWord = dc[t.getDay() % dc.length]
 
+// 甲骨文字体渲染映射（繁体码点才能被OracleBone字体渲染）
+const ORACLE_CHAR_MAP: Record<string, string> = {
+  '\u9F99': '\u9F8D', // 龙→龍
+  '\u98CE': '\u98A8', // 风→風
+  '\u9C7C': '\u9B5A', // 鱼→魚
+  '\u9E1F': '\u9CE5', // 鸟→鳥
+  '\u9A6C': '\u99AC', // 马→馬
+  '\u6765': '\u4F86', // 来→來
+  '\u9EC4': '\u9EC3', // 黄→黃
+}
+function toOracleChar(ch: string): string {
+  return ORACLE_CHAR_MAP[ch] || ch
+}
+const dailyOracleChar = computed(() => toOracleChar(dailyWord.char))
+
 // 数字递增动画
 function countUp(stat: { target: number; counting: string }, duration: number) {
   const isPercent = !Number.isInteger(stat.target)
@@ -283,7 +298,7 @@ onMounted(() => {
 .hero-content.visible .hero-title{animation:titleReveal .8s ease-out}
 @keyframes titleReveal{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
 .hero-char-row{display:flex;justify-content:center;gap:32px;margin-bottom:24px}
-.hero-oracle{font-family:'KaiTi','STKaiti',serif;font-size:64px;color:var(--gold-pale);opacity:.6;animation:float 4s ease-in-out infinite;background:radial-gradient(circle at 30% 40%,rgba(139,119,80,.06) 0%,transparent 50%),linear-gradient(135deg,rgba(245,237,224,.4),rgba(236,224,204,.3) 50%,rgba(230,216,192,.35));border-radius:6px;padding:4px 12px;display:inline-block}
+.hero-oracle{font-family:'OracleBone','KaiTi','STKaiti',serif;font-size:64px;color:var(--gold-pale);opacity:.6;animation:float 4s ease-in-out infinite;background:radial-gradient(circle at 30% 40%,rgba(139,119,80,.06) 0%,transparent 50%),linear-gradient(135deg,rgba(245,237,224,.4),rgba(236,224,204,.3) 50%,rgba(230,216,192,.35));border-radius:6px;padding:4px 12px;display:inline-block}
 .char-1{animation-delay:0s}.char-2{animation-delay:.5s}.char-3{animation-delay:1s}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 .hero-title{font-family:'KaiTi','STKaiti',serif;font-size:3.2rem;color:var(--ink);letter-spacing:10px;margin-bottom:8px}
@@ -320,7 +335,7 @@ onMounted(() => {
 .daily-card{background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-lg);padding:40px;display:flex;gap:40px;align-items:center;box-shadow:var(--shadow);max-width:800px;margin:0 auto;transition:box-shadow .4s}
 .daily-card:hover{box-shadow:var(--shadow-lg)}
 .daily-char-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;flex-shrink:0}
-.daily-char{font-family:'KaiTi','STKaiti',serif;font-size:80px;color:#3d3522;line-height:1;transition:color .4s,transform .3s;background:radial-gradient(circle at 20% 30%,rgba(139,119,80,.07) 0%,transparent 40%),radial-gradient(circle at 80% 70%,rgba(139,119,80,.05) 0%,transparent 35%),linear-gradient(135deg,#f5ede0,#ece0cc 30%,#e6d8c0 60%,#f0e5d5);border:2px solid var(--gold-pale);border-radius:10px;box-shadow:inset 0 2px 4px rgba(0,0,0,.1),inset 0 -1px 0 rgba(255,255,255,.6),0 3px 10px var(--shadow);text-shadow:1px 1px 0 rgba(255,255,255,.4),-1px -1px 0 rgba(0,0,0,.15);padding:12px 24px;display:inline-block}
+.daily-char{font-family:'OracleBone','KaiTi','STKaiti',serif;font-size:80px;color:#3d3522;line-height:1;transition:color .4s,transform .3s;background:radial-gradient(circle at 20% 30%,rgba(139,119,80,.07) 0%,transparent 40%),radial-gradient(circle at 80% 70%,rgba(139,119,80,.05) 0%,transparent 35%),linear-gradient(135deg,#f5ede0,#ece0cc 30%,#e6d8c0 60%,#f0e5d5);border:2px solid var(--gold-pale);border-radius:10px;box-shadow:inset 0 2px 4px rgba(0,0,0,.1),inset 0 -1px 0 rgba(255,255,255,.6),0 3px 10px var(--shadow);text-shadow:1px 1px 0 rgba(255,255,255,.4),-1px -1px 0 rgba(0,0,0,.15);padding:12px 24px;display:inline-block}
 .daily-char.pulse{animation:charPulse 1s ease-out}
 @keyframes charPulse{0%{transform:scale(.5);opacity:0;color:var(--cinnabar)}60%{transform:scale(1.05)}100%{transform:scale(1);opacity:1;color:#3d3522}}
 .daily-char-seal{font-size:12px;color:var(--cinnabar-light);border:1px solid var(--cinnabar-light);padding:2px 10px;font-family:'KaiTi','STKaiti',serif;letter-spacing:2px;transform:rotate(-3deg)}
