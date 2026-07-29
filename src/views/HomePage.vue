@@ -13,9 +13,9 @@
       </div>
       <div class="hero-content" :class="{ visible: heroVisible }">
         <div class="hero-char-row">
-          <span class="hero-oracle char-1">龍</span>
-          <span class="hero-oracle char-2">山</span>
-          <span class="hero-oracle char-3">水</span>
+          <span class="hero-oracle char-1">竹</span>
+          <span class="hero-oracle char-2">言</span>
+          <span class="hero-oracle char-3">可</span>
         </div>
         <h1 class="hero-title">竹下问甲</h1>
         <hr class="ink-divider" />
