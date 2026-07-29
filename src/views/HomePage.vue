@@ -355,7 +355,7 @@ onMounted(() => {
 .daily-char{font-family:'OracleBone','KaiTi','STKaiti',serif;font-size:80px;color:#3d3522;line-height:1;transition:color .4s,transform .3s;background:radial-gradient(circle at 20% 30%,rgba(139,119,80,.07) 0%,transparent 40%),radial-gradient(circle at 80% 70%,rgba(139,119,80,.05) 0%,transparent 35%),linear-gradient(135deg,#f5ede0,#ece0cc 30%,#e6d8c0 60%,#f0e5d5);border:2px solid var(--gold-pale);border-radius:10px;box-shadow:inset 0 2px 4px rgba(0,0,0,.1),inset 0 -1px 0 rgba(255,255,255,.6),0 3px 10px var(--shadow);text-shadow:1px 1px 0 rgba(255,255,255,.4),-1px -1px 0 rgba(0,0,0,.15);padding:12px 24px;display:inline-block}
 .daily-char.pulse{animation:charPulse 1s ease-out}
 @keyframes charPulse{0%{transform:scale(.5);opacity:0;color:var(--cinnabar)}60%{transform:scale(1.05)}100%{transform:scale(1);opacity:1;color:#3d3522}}
-.daily-char-seal{font-size:12px;color:var(--cinnabar-light);border:1px solid var(--cinnabar-light);padding:2px 10px;font-family:'KaiTi','STKaiti',serif;letter-spacing:2px;transform:rotate(-3deg)}
+.daily-char-seal{font-size:12px;color:var(--cinnabar-light);border:1px solid var(--cinnabar-light);padding:2px 10px;font-family:'KaiTi','STKaiti',serif;letter-spacing:2px}
 .daily-bookmark-btn{background:none;border:none;font-size:1.2rem;cursor:pointer;padding:2px 6px;transition:all .3s;margin-top:4px}
 .daily-bookmark-btn .heart-empty{color:var(--ink-wash);transition:all .3s}
 .daily-bookmark-btn .heart-full{color:var(--cinnabar);transition:all .3s}
