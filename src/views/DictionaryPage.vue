@@ -82,10 +82,10 @@
                   <div class="stage-dot"></div>
                   <div class="stage-label">{{ stage.label }}</div>
                   <div class="stage-era">{{ stage.era }}</div>
-                  <div class="stage-desc">{{ (selected.evolution as any)[stage.key] }}</div>
                 </div>
               </div>
             </div>
+            <p class="evolution-summary">自殷商契刻至唐楷定型，一字千年，五体流转</p>
           </div>
 
           <div class="shuowen-section" v-if="selected.shuowen">
@@ -1128,10 +1128,7 @@ const filteredChars = computed(() => {
 .stage-dot{width:14px;height:14px;border-radius:50%;background:var(--paper-light);border:3px solid var(--gold);margin:0 auto 6px;position:relative;z-index:2}
 .stage-label{font-size:.75rem;color:var(--ink);font-family:'KaiTi','STKaiti',serif;letter-spacing:1px;margin-bottom:2px}
 .stage-era{font-size:.65rem;color:var(--ink-wash);margin-bottom:6px}
-.stage-desc{font-size:.72rem;color:var(--ink-light);line-height:1.6;text-align:left;padding:0 2px}
-.stage-char{font-size:42px;line-height:1;color:#3d3522;text-align:center;margin:6px 0 4px}
-.stage-char.oracle{font-family:'OracleBone','KaiTi','STKaiti',serif;font-size:48px}
-.stage-char.not-found{font-size:16px;color:var(--ink-wash);padding:12px 0}
+.evolution-summary{text-align:center;font-family:'KaiTi','STKaiti',serif;font-size:.82rem;color:var(--gold);letter-spacing:2px;margin-top:12px}
 
 /* ------ 说文解字引用 ------ */
 .shuowen-section{margin-bottom:16px;text-align:left}
@@ -1150,7 +1147,6 @@ const filteredChars = computed(() => {
   .timeline-stages{flex-wrap:wrap;justify-content:center;gap:8px}
   .timeline-line{display:none}
   .timeline-stage{flex:0 0 auto;width:30%;margin-bottom:12px}
-  .stage-desc{font-size:.7rem;text-align:center}
   .detail-meta{gap:12px}
 }
 
