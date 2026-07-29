@@ -172,11 +172,30 @@ async function toggleBookmark(item: { char: string; meaning: string; category: s
 }
 
 const stats = reactive([
-  { label: '已收录甲骨文单字', target: 4500, counting: '0' },
-  { label: '已释读文字', target: 1200, counting: '0' },
-  { label: 'AI识别准确率', target: 95.6, counting: '0%' },
-  { label: '社群爱好者', target: 3600, counting: '0' },
+  { label: '字典收录单字', target: 47, counting: '0' },
+  { label: '甲骨已释读字', target: 1200, counting: '0' },
+  { label: '帖文交流', target: 0, counting: '0' },
+  { label: '社群成员', target: 0, counting: '0' },
 ])
+
+const statsReady = ref(false)
+let statsAnimated = false
+
+async function loadStats() {
+  try {
+    const [postsRes, profilesRes] = await Promise.all([
+      supabase.from('posts').select('*', { count: 'exact', head: true }),
+      supabase.from('profiles').select('*', { count: 'exact', head: true })
+    ])
+    if (postsRes.count != null) stats[2].target = postsRes.count
+    if (profilesRes.count != null) stats[3].target = profilesRes.count
+  } catch (_) { /* 网络异常时保留默认值 */ }
+  statsReady.value = true
+  if (statsVisible.value && !statsAnimated) {
+    statsAnimated = true
+    stats.forEach(s => countUp(s, 1500))
+  }
+}
 
 // 日期
 const wd = ['日','一','二','三','四','五','六']
@@ -214,18 +233,13 @@ const dailyOracleChar = computed(() => toOracleChar(dailyWord.char))
 
 // 数字递增动画
 function countUp(stat: { target: number; counting: string }, duration: number) {
-  const isPercent = !Number.isInteger(stat.target)
   const target = stat.target
   const startTime = performance.now()
   function tick(now: number) {
     const elapsed = now - startTime
     const progress = Math.min(elapsed / duration, 1)
-    const current = target * progress
-    if (target >= 100) {
-      stat.counting = Math.floor(current).toLocaleString() + (isPercent ? '' : '+')
-    } else {
-      stat.counting = current.toFixed(1) + '%'
-    }
+    const current = Math.floor(target * progress)
+    stat.counting = current.toLocaleString()
     if (progress < 1) requestAnimationFrame(tick)
   }
   requestAnimationFrame(tick)
@@ -234,6 +248,7 @@ function countUp(stat: { target: number; counting: string }, duration: number) {
 // IntersectionObserver 滚动动画
 onMounted(() => {
   loadBookmarks()
+  loadStats()
   // 打字机效果
   let i = 0
   const type = () => {
@@ -258,8 +273,10 @@ onMounted(() => {
         dailyVisible.value = true
       } else if (el.classList.contains('stats-section')) {
         statsVisible.value = true
-        // count up
-        stats.forEach(s => countUp(s, 1500))
+        if (statsReady.value && !statsAnimated) {
+          statsAnimated = true
+          stats.forEach(s => countUp(s, 1500))
+        }
       } else if (el.classList.contains('quote-section')) {
         quoteVisible.value = true
       }
