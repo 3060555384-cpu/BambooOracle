@@ -44,7 +44,7 @@
       <div v-for="(char, idx) in filteredChars" :key="char.char" class="dict-card"
         :style="{ animationDelay: idx * 0.03 + 's' }" @click="selected = char">
         <img v-if="(char as any).rubbingImg" :src="(char as any).rubbingImg" class="dict-rubbing-img" alt="" />
-        <div class="dict-char">{{ char.char }}</div>
+        <div class="dict-char oracle">{{ char.char }}</div>
         <div class="dict-meaning">{{ char.meaning }}</div>
         <div class="dict-pinyin">{{ char.pinyin }}</div>
         <div class="dict-category">{{ char.category }}</div>
@@ -63,7 +63,7 @@
             <span v-else class="heart-empty">&#9825;</span>
           </button>
           <img v-if="(selected as any).rubbingImg" :src="(selected as any).rubbingImg" class="detail-rubbing-img" alt="" />
-          <div class="detail-char">{{ selected.char }}</div>
+          <div class="detail-char oracle">{{ selected.char }}</div>
           <div class="detail-stamp">甲骨文</div>
           <div class="detail-pinyin">{{ selected.pinyin }}</div>
           <h2 class="detail-title">{{ selected.meaning }}</h2>
@@ -78,6 +78,7 @@
                   <div class="stage-dot"></div>
                   <div class="stage-label">{{ stage.label }}</div>
                   <div class="stage-era">{{ stage.era }}</div>
+                  <div class="stage-char" :class="{ oracle: stage.key === 'oracle' }" v-if="stage.key === 'oracle'">{{ selected.char }}</div>
                   <div class="stage-desc">{{ (selected.evolution as any)[stage.key] }}</div>
                 </div>
               </div>
@@ -1110,6 +1111,7 @@ const filteredChars = computed(() => {
 @keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .dict-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--gold-pale)}
 .dict-char{font-family:'KaiTi','STKaiti',serif;font-size:46px;color:#3d3522;line-height:1.2;margin-bottom:8px;transition:color .3s,transform .3s;background:radial-gradient(circle at 20% 30%,rgba(139,119,80,.07) 0%,transparent 40%),radial-gradient(circle at 80% 70%,rgba(139,119,80,.05) 0%,transparent 35%),linear-gradient(135deg,#f5ede0,#ece0cc 30%,#e6d8c0 60%,#f0e5d5);border:2px solid var(--gold-pale);border-radius:8px;box-shadow:inset 0 2px 4px rgba(0,0,0,.1),inset 0 -1px 0 rgba(255,255,255,.6),0 3px 8px var(--shadow);text-shadow:1px 1px 0 rgba(255,255,255,.4),-1px -1px 0 rgba(0,0,0,.15);padding:8px 16px;display:inline-block}
+.dict-char.oracle{font-family:'OracleBone','KaiTi','STKaiti',serif;font-size:52px}
 .dict-card:hover .dict-char{color:#2d2518;transform:scale(1.05)}
 .dict-meaning{font-size:.85rem;color:var(--ink-light);letter-spacing:1px;margin-bottom:2px}
 .dict-pinyin{font-size:.72rem;color:var(--gold);margin-bottom:4px}
@@ -1134,6 +1136,7 @@ const filteredChars = computed(() => {
 .bookmark-btn:hover .heart-full{transform:scale(1.2)}
 
 .detail-char{font-family:'KaiTi','STKaiti',serif;font-size:88px;color:#3d3522;line-height:1;margin-bottom:6px;background:radial-gradient(circle at 15% 25%,rgba(139,119,80,.08) 0%,transparent 45%),radial-gradient(circle at 85% 75%,rgba(139,119,80,.05) 0%,transparent 40%),linear-gradient(145deg,#f5ede0,#ece0cc 30%,#e6d8c0 60%,#f0e5d5);border:2px solid var(--gold-pale);border-radius:12px;box-shadow:inset 0 3px 6px rgba(0,0,0,.12),inset 0 -2px 0 rgba(255,255,255,.6),0 4px 12px var(--shadow);text-shadow:2px 2px 0 rgba(255,255,255,.45),-2px -1px 0 rgba(0,0,0,.18);padding:12px 24px;display:inline-block}
+.detail-char.oracle{font-family:'OracleBone','KaiTi','STKaiti',serif}
 .detail-stamp{display:inline-block;font-size:12px;color:var(--cinnabar-light);border:1px solid var(--cinnabar-light);padding:2px 12px;font-family:'KaiTi','STKaiti',serif;letter-spacing:3px;margin-bottom:4px}
 .detail-pinyin{font-size:1rem;color:var(--gold);letter-spacing:2px;margin-bottom:8px}
 .detail-title{font-family:'KaiTi','STKaiti',serif;font-size:1.4rem;color:var(--ink);letter-spacing:3px;margin-bottom:8px}
@@ -1149,6 +1152,8 @@ const filteredChars = computed(() => {
 .stage-label{font-size:.75rem;color:var(--ink);font-family:'KaiTi','STKaiti',serif;letter-spacing:1px;margin-bottom:2px}
 .stage-era{font-size:.65rem;color:var(--ink-wash);margin-bottom:6px}
 .stage-desc{font-size:.72rem;color:var(--ink-light);line-height:1.6;text-align:left;padding:0 2px}
+.stage-char{font-size:42px;line-height:1;color:#3d3522;text-align:center;margin:6px 0 4px}
+.stage-char.oracle{font-family:'OracleBone','KaiTi','STKaiti',serif;font-size:48px}
 
 /* ------ 说文解字引用 ------ */
 .shuowen-section{margin-bottom:16px;text-align:left}
