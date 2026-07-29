@@ -52,6 +52,34 @@
       </div>
     </div>
 
+    <!-- 临摹契刻 -->
+    <section class="studio-section">
+      <div class="studio-header" @click="studioOpen = !studioOpen">
+        <span class="studio-icon">&#x1F3A8;</span>
+        <h3>临摹契刻</h3>
+        <span class="studio-arrow" :class="{ open: studioOpen }">&#x25BC;</span>
+      </div>
+      <div class="studio-body" v-show="studioOpen">
+        <div class="studio-input-row">
+          <input v-model="studioText" class="studio-input" placeholder="输入想契刻的文字..." maxlength="30" @input="scheduleStudioDraw" />
+          <button class="btn-ink studio-fill-btn" @click="fillFromFiltered">使用筛选结果</button>
+        </div>
+        <div class="studio-toolbar">
+          <button v-for="s in studioStyles" :key="s.key"
+            :class="{ active: studioStyle === s.key }"
+            @click="studioStyle = s.key; scheduleStudioDraw()">
+            {{ s.icon }} {{ s.label }}
+          </button>
+          <button :class="{ active: studioVertical }" @click="studioVertical = true; scheduleStudioDraw()">竖排</button>
+          <button :class="{ active: !studioVertical }" @click="studioVertical = false; scheduleStudioDraw()">横排</button>
+          <button class="btn-gold" @click="studioExport">下载</button>
+        </div>
+        <div class="studio-canvas-wrap" ref="studioWrapRef">
+          <canvas ref="studioCanvasRef"></canvas>
+        </div>
+      </div>
+    </section>
+
     <Teleport to="body">
       <div v-if="selected" class="detail-overlay" @click.self="closeDetail">
         <div class="detail-card">
@@ -110,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useRoute } from 'vue-router'
 
@@ -964,6 +992,8 @@ function hasOracleGlyph(_char: string): boolean {
   return true
 }
 
+const oracleSet = new Set<string>(chars.map(c => c.char))
+
 function togglePinyin(letter: string) {
   selectedPinyin.value = selectedPinyin.value === letter ? '' : letter
 }
@@ -1019,15 +1049,227 @@ async function toggleBookmark(item: typeof chars[0]) {
 onMounted(() => {
   loadBookmarks()
   document.addEventListener('keydown', onKeydown)
+  window.addEventListener('resize', drawStudio)
 })
 
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('resize', drawStudio)
+  clearTimeout(studioDrawTimer)
 })
 
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape' && selected.value) { selected.value = null }
 }
+
+// ====== 临摹契刻 Canvas ======
+const studioOpen = ref(false)
+const studioText = ref('')
+const studioCanvasRef = ref<HTMLCanvasElement | null>(null)
+const studioWrapRef = ref<HTMLElement | null>(null)
+const studioStyle = ref<'turtle' | 'bone' | 'bamboo' | 'paper'>('turtle')
+const studioVertical = ref(true)
+
+const studioStyles = [
+  { key: 'turtle' as const, label: '龟甲', icon: '\u{1F422}' },
+  { key: 'bone' as const, label: '兽骨', icon: '\u{1F9B4}' },
+  { key: 'bamboo' as const, label: '竹简', icon: '\u{1F38D}' },
+  { key: 'paper' as const, label: '宣纸', icon: '\u{1F4C4}' },
+]
+
+let studioDrawTimer = 0
+
+function scheduleStudioDraw() {
+  clearTimeout(studioDrawTimer)
+  studioDrawTimer = window.setTimeout(drawStudio, 100)
+}
+
+function fillFromFiltered() {
+  studioOpen.value = true
+  studioText.value = filteredChars.value.map(c => c.char).join('')
+  nextTick(drawStudio)
+}
+
+watch([studioStyle, studioVertical], () => { nextTick(drawStudio) })
+
+function studioChars(): string[] {
+  return studioText.value.split('').filter(ch => ch.trim())
+}
+
+function drawStudio() {
+  const canvas = studioCanvasRef.value
+  if (!canvas) return
+  const wrap = studioWrapRef.value
+  const w = wrap ? wrap.clientWidth : 760
+  const h = studioVertical.value ? Math.max(320, w * 0.65) : Math.max(220, w * 0.35)
+  const dpr = 2
+  canvas.width = w * dpr
+  canvas.height = h * dpr
+  canvas.style.width = w + 'px'
+  canvas.style.height = h + 'px'
+
+  const ctx = canvas.getContext('2d')!
+  ctx.scale(dpr, dpr)
+
+  const chars = studioChars()
+  if (chars.length === 0) {
+    drawStudioBG(ctx, w, h)
+    drawStudioFrame(ctx, w, h)
+    ctx.fillStyle = 'rgba(139,119,80,0.2)'
+    ctx.font = '22px "KaiTi","STKaiti",serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('输入文字后开始契刻...', w / 2, h / 2)
+    return
+  }
+
+  drawStudioBG(ctx, w, h)
+  drawStudioChars(ctx, w, h, chars)
+  drawStudioSeal(ctx, w, h)
+  drawStudioFrame(ctx, w, h)
+}
+
+// --- 背景（复用临摹台逻辑） ---
+function drawStudioBG(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const gradients: Record<string, [string, string, string, string]> = {
+    turtle: ['#e8d5a3', '#dcc89a', '#d4be8a', '#c9b078'],
+    bone: ['#f5f0e8', '#ede4d5', '#e8ddc8', '#e0d5c0'],
+    bamboo: ['#d8c9a5', '#d4c5a0', '#cfbe98', '#c8b68e'],
+    paper: ['#faf6ed', '#f5efde', '#efe5ce', '#e8dcc0'],
+  }
+  const g = gradients[studioStyle.value]
+  const grad = ctx.createLinearGradient(0, 0, w, h)
+  grad.addColorStop(0, g[0]); grad.addColorStop(0.33, g[1])
+  grad.addColorStop(0.66, g[2]); grad.addColorStop(1, g[3])
+  ctx.fillStyle = grad
+  ctx.fillRect(0, 0, w, h)
+
+  // 龟甲纹
+  if (studioStyle.value === 'turtle') {
+    ctx.strokeStyle = 'rgba(120,90,40,0.15)'; ctx.lineWidth = 0.8
+    for (let i = 0; i < 8; i++) {
+      ctx.beginPath()
+      let cx = w * (0.15 + Math.random() * 0.7), cy = h * (0.1 + Math.random() * 0.8)
+      ctx.moveTo(cx, cy)
+      for (let j = 0; j < 5; j++) {
+        cx += (Math.random() - 0.5) * w * 0.2; cy += (Math.random() - 0.5) * h * 0.15
+        ctx.lineTo(cx, cy)
+      }
+      ctx.stroke()
+    }
+  }
+  // 骨质纹
+  if (studioStyle.value === 'bone') {
+    ctx.strokeStyle = 'rgba(160,140,110,0.1)'; ctx.lineWidth = 0.4
+    for (let i = 0; i < 15; i++) {
+      ctx.beginPath(); let y = h * (0.05 + i * 0.06)
+      ctx.moveTo(0, y)
+      for (let x = 0; x < w; x += 20) ctx.lineTo(x, y + Math.sin(x * 0.01 + i) * 2)
+      ctx.stroke()
+    }
+  }
+  // 竹简纹
+  if (studioStyle.value === 'bamboo') {
+    const slipW = w / 6
+    for (let i = 0; i < 6; i++) {
+      const x = i * slipW
+      ctx.fillStyle = `rgba(200,180,140,${0.6 + Math.random() * 0.3})`
+      ctx.fillRect(x + 2, 0, slipW - 4, h)
+      ctx.strokeStyle = 'rgba(100,70,30,0.15)'; ctx.lineWidth = 0.8
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke()
+    }
+  }
+  // 宣纸纹
+  if (studioStyle.value === 'paper') {
+    ctx.strokeStyle = 'rgba(180,160,120,0.05)'; ctx.lineWidth = 0.3
+    for (let i = 0; i < 100; i++) {
+      ctx.beginPath()
+      let x = w * Math.random(), y = h * Math.random()
+      ctx.moveTo(x, y); ctx.lineTo(x + (Math.random() - 0.5) * 40, y + (Math.random() - 0.5) * 6)
+      ctx.stroke()
+    }
+  }
+}
+
+function drawStudioChars(ctx: CanvasRenderingContext2D, w: number, h: number, chars: string[]) {
+  const m = 36
+  const aw = w - m * 2; const ah = h - m * 2
+
+  if (studioVertical.value) {
+    const cols = Math.max(1, Math.min(6, Math.ceil(chars.length / 3)))
+    const rows = Math.ceil(chars.length / cols)
+    const cellW = aw / cols
+    const cellH = Math.min(ah / rows, cellW * 1.3)
+    const fs = Math.min(cellW * 0.68, cellH * 0.72, 64)
+    ctx.font = `${fs}px "OracleBone","KaiTi","STKaiti",serif`
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    let idx = 0
+    for (let col = cols - 1; col >= 0 && idx < chars.length; col--) {
+      for (let row = 0; row < rows && idx < chars.length; row++) {
+        const cx = m + col * cellW + cellW / 2
+        const cy = m + row * cellH + cellH / 2
+        const ch = chars[idx]
+        ctx.fillStyle = oracleSet.has(ch) ? '#2d2010' : 'rgba(180,160,120,0.35)'
+        ctx.fillText(oracleSet.has(ch) ? toOracleChar(ch) : '?', cx, cy)
+        idx++
+      }
+    }
+  } else {
+    const cols = Math.min(chars.length, 8)
+    const rows = Math.ceil(chars.length / cols)
+    const cellW = aw / cols
+    const cellH = Math.min(ah / Math.max(rows, 1), cellW * 1.3)
+    const fs = Math.min(cellW * 0.62, cellH * 0.68, 60)
+    ctx.font = `${fs}px "OracleBone","KaiTi","STKaiti",serif`
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    let idx = 0
+    for (let row = 0; row < rows && idx < chars.length; row++) {
+      for (let col = 0; col < cols && idx < chars.length; col++) {
+        const cx = m + col * cellW + cellW / 2
+        const cy = m + row * cellH + cellH / 2
+        const ch = chars[idx]
+        ctx.fillStyle = oracleSet.has(ch) ? '#2d2010' : 'rgba(180,160,120,0.35)'
+        ctx.fillText(oracleSet.has(ch) ? toOracleChar(ch) : '?', cx, cy)
+        idx++
+      }
+    }
+  }
+}
+
+function drawStudioSeal(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const sz = 34, sx = w - sz - 20, sy = h - sz - 14
+  ctx.save()
+  ctx.translate(sx + sz / 2, sy + sz / 2); ctx.rotate(-0.06)
+  ctx.strokeStyle = '#b5302a'; ctx.lineWidth = 2; ctx.strokeRect(-sz / 2, -sz / 2, sz, sz)
+  ctx.fillStyle = '#b5302a'; ctx.font = 'bold 13px "KaiTi","STKaiti",serif'
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.fillText('竹下', -sz / 4, 0); ctx.fillText('问甲', sz / 4, 0)
+  ctx.restore()
+}
+
+function drawStudioFrame(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const m = 12
+  ctx.strokeStyle = 'rgba(139,119,80,0.2)'; ctx.lineWidth = 0.8; ctx.strokeRect(m, m, w - m * 2, h - m * 2)
+  const cl = 14
+  ctx.lineWidth = 1.5
+  ;[{ x: m, y: m, dx: 1, dy: 1 }, { x: w - m, y: m, dx: -1, dy: 1 },
+    { x: m, y: h - m, dx: 1, dy: -1 }, { x: w - m, y: h - m, dx: -1, dy: -1 }]
+    .forEach(c => {
+      ctx.beginPath()
+      ctx.moveTo(c.x, c.y + c.dy * cl); ctx.lineTo(c.x, c.y); ctx.lineTo(c.x + c.dx * cl, c.y)
+      ctx.stroke()
+    })
+}
+
+function studioExport() {
+  const canvas = studioCanvasRef.value
+  if (!canvas) return
+  const link = document.createElement('a')
+  link.download = '甲骨契刻_' + Date.now() + '.png'
+  link.href = canvas.toDataURL('image/png')
+  link.click()
+}
+
+watch(studioText, () => { if (studioOpen.value) scheduleStudioDraw() })
 
 const filteredChars = computed(() => {
   let result = chars
@@ -1152,4 +1394,30 @@ const filteredChars = computed(() => {
 
 .dict-rubbing-img{width:100%;height:60px;object-fit:contain;border-radius:4px;margin-bottom:4px;filter:sepia(0.35) contrast(1.1);background:rgba(245,237,224,0.5)}
 .detail-rubbing-img{width:130px;height:130px;object-fit:contain;border-radius:8px;margin-bottom:12px;filter:sepia(0.35) contrast(1.1);border:1px solid var(--paper-dark);background:rgba(245,237,224,0.3)}
+
+/* ------ 临摹契刻 ------ */
+.studio-section{margin-top:28px}
+.studio-header{display:flex;align-items:center;gap:12px;padding:14px 20px;background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-md);cursor:pointer;user-select:none;transition:all .3s}
+.studio-header:hover{border-color:var(--gold-pale)}
+.studio-icon{font-size:1.2rem}
+.studio-header h3{font-family:'KaiTi','STKaiti',serif;font-size:1.05rem;color:var(--ink);letter-spacing:2px;margin:0;flex:1}
+.studio-arrow{font-size:.7rem;color:var(--ink-wash);transition:transform .3s}
+.studio-arrow.open{transform:rotate(180deg)}
+.studio-body{padding:16px 0 0;animation:fadeIn .3s ease}
+.studio-input-row{display:flex;gap:10px;margin-bottom:12px}
+.studio-input{flex:1;padding:10px 14px;border:1px solid var(--paper-dark);border-radius:var(--radius);font-size:.9rem;font-family:inherit;color:var(--ink);outline:none;background:#fff;transition:border-color .3s}
+.studio-input:focus{border-color:var(--gold)}
+.studio-fill-btn{padding:8px 16px;font-size:.82rem;white-space:nowrap}
+.studio-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.studio-toolbar button{padding:5px 12px;background:var(--paper);border:1px solid var(--paper-dark);color:var(--ink-wash);font-size:.78rem;font-family:inherit;letter-spacing:1px;cursor:pointer;border-radius:var(--radius);transition:all .25s}
+.studio-toolbar button:hover{border-color:var(--gold);color:var(--gold)}
+.studio-toolbar button.active{background:var(--ink);color:var(--paper-light);border-color:var(--ink)}
+.studio-canvas-wrap{background:#fff;border-radius:var(--radius-md);box-shadow:var(--shadow);overflow:hidden;border:1px solid var(--paper-dark)}
+.studio-canvas-wrap canvas{display:block;width:100%;height:auto}
+
+@media(max-width:500px){
+  .studio-input-row{flex-direction:column}
+  .studio-toolbar{gap:6px}
+  .studio-toolbar button{padding:4px 8px;font-size:.72rem}
+}
 </style>

@@ -37,10 +37,6 @@
             <span class="nav-icon">&#128218;</span>
             <span>字典</span>
           </router-link>
-          <router-link to="/convert" class="nav-link" active-class="active" @click="menuOpen = false">
-            <span class="nav-icon">&#128221;</span>
-            <span>转换</span>
-          </router-link>
           <router-link to="/community" class="nav-link" active-class="active" @click="menuOpen = false">
             <span class="nav-icon">&#128172;</span>
             <span>社群</span>
