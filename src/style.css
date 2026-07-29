@@ -2,8 +2,7 @@
 /* 甲骨文字体 */
 @font-face {
   font-family: 'OracleBone';
-  src: url('/oracle-bone.woff2') format('woff2'),
-       url('/oracle-bone.ttf') format('truetype');
+  src: url('/oracle-bone.ttf') format('truetype');
   font-display: swap;
   font-weight: normal;
   font-style: normal;
