@@ -118,14 +118,14 @@ const copied = ref(false)
 let copyTimer = 0
 
 const presets = [
-  '\u5929\u5730\u65E5\u6708',
-  '\u5C71\u9AD8\u6C34\u957F',
-  '\u98CE\u96E8\u96F7\u7535',
+  '\u65E5\u6708\u6C34\u706B',
+  '\u5C71\u6C34\u98CE\u96E8',
+  '\u51FA\u5165\u4E0A\u4E0B',
   '\u725B\u9A6C\u7F8A\u72AC',
   '\u4E0A\u4E0B\u51FA\u5165',
   '\u9C7C\u9E1F\u864E\u9E7F',
   '\u5FC3\u53E3\u8033\u76EE',
-  '\u738B\u81E3\u5B50\u6C11'
+  '\u738B\u81E3\u5B50\u5973'
 ]
 
 const oracleEntries: OracleEntry[] = [
