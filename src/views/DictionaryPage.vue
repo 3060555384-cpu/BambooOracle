@@ -929,7 +929,7 @@ watch(() => route.query.q, (q) => {
   if (q) search.value = q as string
 })
 
-const categories = ['全部', '象形字', '会意字', '指事字', '形声字']
+const categories = ['全部', '象形字', '会意字', '指事字', '形声字', '假借字']
 const pinyinLetters = ['A','B','C','D','E','F','G','H','J','K','L','M','N','O','P','Q','R','S','T','W','X','Y','Z']
 
 const commonRadicals = [
