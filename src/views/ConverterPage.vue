@@ -274,7 +274,7 @@ onUnmounted(function() {
 .oracle-card:not(.included):hover{opacity:.85}
 
 .oracle-char-wrap{position:relative;display:inline-flex;flex-direction:column;align-items:center}
-.oracle-char{font-family:'KaiTi','STKaiti','SimSun',serif;font-size:56px;color:var(--ink);line-height:1;padding:12px 16px 6px;border:3px solid var(--paper-dark);border-radius:var(--radius-md);background:linear-gradient(180deg,var(--paper-light) 0%,#fff 100%);min-width:72px;min-height:72px;display:flex;align-items:center;justify-content:center;position:relative;transition:all .3s ease}
+.oracle-char{font-family:'OracleBone','KaiTi','STKaiti','SimSun',serif;font-size:56px;color:var(--ink);line-height:1;padding:12px 16px 6px;border:3px solid var(--paper-dark);border-radius:var(--radius-md);background:linear-gradient(180deg,var(--paper-light) 0%,#fff 100%);min-width:72px;min-height:72px;display:flex;align-items:center;justify-content:center;position:relative;transition:all .3s ease}
 .oracle-card.included .oracle-char{border-color:var(--gold-pale);box-shadow:inset 0 0 0 1px rgba(184,134,11,.08)}
 .oracle-card.included:hover .oracle-char{border-color:var(--gold);color:var(--gold)}
 
@@ -307,7 +307,7 @@ onUnmounted(function() {
 @media(max-width:600px){
   .input-textarea{height:120px;font-size:1rem;padding:16px}
   .oracle-grid{grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:10px}
-  .oracle-char{font-size:40px;min-width:56px;min-height:56px;padding:10px 12px 4px}
+  .oracle-char{font-family:'OracleBone','KaiTi','STKaiti','SimSun',serif;font-size:40px;min-width:56px;min-height:56px;padding:10px 12px 4px}
   .oracle-card{padding:14px 4px 10px}
   .preset-section{gap:6px}
   .preset-btn{font-size:.8rem;padding:5px 12px}

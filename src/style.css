@@ -1,4 +1,13 @@
-﻿/* === BambooOracle 全局样式 —— 水墨国风 === */
+/* === BambooOracle 全局样式 —— 水墨国风 === */
+/* 甲骨文字体 */
+@font-face {
+  font-family: 'OracleBone';
+  src: url('/oracle-bone.woff2') format('woff2'),
+       url('/oracle-bone.ttf') format('truetype');
+  font-display: swap;
+  font-weight: normal;
+  font-style: normal;
+}
 :root {
   --ink: #1a1a1a;
   --ink-light: #3a3a3a;
