@@ -1,7 +1,7 @@
 <template>
   <div class="dict-page">
     <div class="page-header">
-      <h1>甲骨字典（方正甲骨文 v2）</h1>
+      <h1>甲骨字典</h1>
       <p>溯源文字，问道殷商</p>
       <hr class="ink-divider" />
 
