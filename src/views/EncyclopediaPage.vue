@@ -177,10 +177,75 @@
       </div>
     </section>
 
+    <!-- Section 5: 著名甲骨片 -->
+    <section class="ency-section">
+      <div class="section-header" @click="toggle('artifacts')">
+        <span class="section-icon">&#x1F3FA;</span>
+        <h2>著名甲骨片</h2>
+        <span class="section-arrow" :class="{ open: sections.artifacts }">&#x25BC;</span>
+      </div>
+      <div class="section-body" v-show="sections.artifacts">
+        <div class="artifacts-grid">
+          <div v-for="a in artifacts" :key="a.name" class="artifact-card">
+            <div class="artifact-header">
+              <span class="artifact-num">{{ a.code }}</span>
+              <h3 class="artifact-name">{{ a.name }}</h3>
+            </div>
+            <div class="artifact-tags">
+              <span class="artifact-tag">{{ a.era }}</span>
+              <span class="artifact-tag">{{ a.type }}</span>
+            </div>
+            <p class="artifact-desc">{{ a.desc }}</p>
+            <p class="artifact-significance">{{ a.significance }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 6: 甲骨学研究大事年表 -->
+    <section class="ency-section">
+      <div class="section-header" @click="toggle('timeline')">
+        <span class="section-icon">&#x1F4C5;</span>
+        <h2>研究大事年表</h2>
+        <span class="section-arrow" :class="{ open: sections.timeline }">&#x25BC;</span>
+      </div>
+      <div class="section-body" v-show="sections.timeline">
+        <div class="timeline-vertical">
+          <div class="timeline-line-v"></div>
+          <div v-for="(evt, i) in obTimeline" :key="i" class="timeline-event" :class="{ left: i % 2 === 0, right: i % 2 === 1 }">
+            <div class="timeline-dot"></div>
+            <div class="timeline-card">
+              <span class="timeline-year">{{ evt.year }}</span>
+              <p class="timeline-text">{{ evt.event }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 7: 学术资源 -->
+    <section class="ency-section">
+      <div class="section-header" @click="toggle('resources')">
+        <span class="section-icon">&#x1F517;</span>
+        <h2>学术资源</h2>
+        <span class="section-arrow" :class="{ open: sections.resources }">&#x25BC;</span>
+      </div>
+      <div class="section-body" v-show="sections.resources">
+        <div class="resources-grid">
+          <a v-for="r in resources" :key="r.name" :href="r.url" target="_blank" rel="noopener" class="resource-card">
+            <div class="resource-badge">{{ r.badge }}</div>
+            <h3 class="resource-name">{{ r.name }}</h3>
+            <p class="resource-desc">{{ r.desc }}</p>
+            <span class="resource-link">访问资源 &rarr;</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
     <!-- Footer quote -->
     <section class="quote-section">
       <blockquote class="ink-quote">
-        <p>“甲骨文的发现，不仅是考古学上的一件大事，而且为语言文字学的研究提供了极为宝贵的资料。”</p>
+        <p>"甲骨文的发现，不仅是考古学上的一件大事，而且为语言文字学的研究提供了极为宝贵的资料。"</p>
         <cite>&mdash; 郭沐若</cite>
       </blockquote>
     </section>
@@ -195,6 +260,9 @@ interface SectionState {
   liushu: boolean
   scholars: boolean
   yinxu: boolean
+  artifacts: boolean
+  timeline: boolean
+  resources: boolean
 }
 
 interface ChatMessage {
@@ -215,11 +283,35 @@ interface Scholar {
   contribution: string
 }
 
+interface Artifact {
+  code: string
+  name: string
+  era: string
+  type: string
+  desc: string
+  significance: string
+}
+
+interface TimelineEvent {
+  year: string
+  event: string
+}
+
+interface Resource {
+  name: string
+  url: string
+  badge: string
+  desc: string
+}
+
 const sections = reactive<SectionState>({
   overview: false,
   liushu: false,
   scholars: false,
-  yinxu: false
+  yinxu: false,
+  artifacts: false,
+  timeline: false,
+  resources: false
 })
 
 function toggle(key: keyof SectionState): void {
@@ -350,7 +442,92 @@ const scholars: Scholar[] = [
   {
     name: '董作宾',
     years: '1895—1963',
-    contribution: '“甲骨四堂”之一，字彦堂。首创甲骨文断代研究，将殷墟甲骨分为五个时期，建立了甲骨文断代学。'
+    contribution: '"甲骨四堂"之一，字彦堂。首创甲骨文断代研究，将殷墟甲骨分为五个时期，建立了甲骨文断代学。'
+  }
+]
+
+const artifacts: Artifact[] = [
+  {
+    code: 'YH127',
+    name: 'YH127 坑甲骨',
+    era: '商代武丁时期',
+    type: '窖藏甲骨',
+    desc: '1936 年殷墟第十三次发掘中发现，一坑出土甲骨 17,096 片，其中完整龟甲近 300 版。此坑甲骨数量之大、内容之丰富，为历次发掘之最。',
+    significance: '被称为"甲骨文的档案库"，极大推动了商代世系、历法、祭祀制度的研究。'
+  },
+  {
+    code: 'H3',
+    name: '花园庄东地 H3 坑',
+    era: '商代晚期',
+    type: '非王卜辞',
+    desc: '1991 年发现于安阳花园庄东地，出土甲骨 1,583 片，其中刻辞甲骨 579 片。内容主要为"子"族卜辞，非商王占卜记录。',
+    significance: '首次大规模发现"非王卜辞"，揭示了商代贵族家族的占卜活动，拓展了甲骨学研究范围。'
+  },
+  {
+    code: '合集',
+    name: '《甲骨文合集》',
+    era: '1978—1982 年出版',
+    type: '文献辑录',
+    desc: '郭沐若主编、胡厚宣总编辑，共 13 册，收录甲骨 41,956 片，是迄今为止最权威的甲骨文资料总集。',
+    significance: '甲骨学研究的里程碑式著作，为学者提供了最为系统全面的甲骨文图像资料。'
+  },
+  {
+    code: '屯南',
+    name: '小屯南地甲骨',
+    era: '商代武丁至文丁',
+    type: '科学发掘',
+    desc: '1973 年出土于安阳小屯南地，共 5,335 片。为中华人民共和国成立后出土数量最多的一批科学发掘甲骨。',
+    significance: '有明确的地层关系和共存器物，为甲骨文分期断代提供了科学依据。'
+  },
+  {
+    code: '妇好',
+    name: '妇好墓相关甲骨',
+    era: '商代武丁时期',
+    type: '王室卜辞',
+    desc: '与妇好（商王武丁配偶）相关的甲骨占卜记录，涉及妇好征伐、祭祀、生育、疾病等内容。',
+    significance: '配合 1976 年妇好墓的发掘，证明了甲骨文中妇好记载的可信性，实现了考古与文献的互证。'
+  }
+]
+
+const obTimeline: TimelineEvent[] = [
+  { year: '约前14世纪', event: '商王盘庚迁都于殷（今安阳），甲骨占卜之风盛行' },
+  { year: '1899 年', event: '王懿荣首次识别甲骨文，揭开甲骨学序幕' },
+  { year: '1903 年', event: '刘鹗《铁云藏龟》出版，为第一部甲骨文著录' },
+  { year: '1917 年', event: '王国维发表《殷卜辞中所见先公先王考》，以甲骨证史' },
+  { year: '1928 年', event: '中央研究院史语所开始在安阳殷墟进行科学发掘' },
+  { year: '1936 年', event: 'YH127 坑大量甲骨出土，一次获 17,096 片' },
+  { year: '1953 年', event: '郭沐若《卜辞通纂》定稿出版' },
+  { year: '1973 年', event: '小屯南地甲骨出土，共 5,335 片' },
+  { year: '1978—1982 年', event: '《甲骨文合集》全 13 册陆续出版，收录 41,956 片' },
+  { year: '2006 年', event: '殷墟列入联合国教科文组织世界文化遗产名录' },
+  { year: '2019 年', event: '"殷契文渊"甲骨文大数据平台正式上线' },
+  { year: '2024 年', event: '华科发布 HUST-OBC 数据集（14 万张图像），AI 辅助甲骨文研究进入新纪元' }
+]
+
+const resources: Resource[] = [
+  {
+    name: 'HUST-OBC 甲骨文数据集',
+    url: 'https://github.com/Pengjie-W/HUST-OBC',
+    badge: '数据集',
+    desc: '华中科技大学发布的甲骨文识别与破译数据集，含 140,053 张图像及预训练模型，分类准确率 94.6%。'
+  },
+  {
+    name: 'Open-Oracle 论文索引',
+    url: 'https://github.com/Yuliang-Liu/Open-Oracle',
+    badge: '论文',
+    desc: '甲骨文 AI 研究资源总目录，收录百余篇甲骨文识别、破译、检索相关论文及开源代码。'
+  },
+  {
+    name: '殷契文渊',
+    url: 'https://tanyuan.qq.com/plan/oracle',
+    badge: '平台',
+    desc: '全球最大甲骨文多模态数据集，含一万片甲骨拓片/摹本及单字标注，支持在线检索与 AI 识别。'
+  },
+  {
+    name: 'OBSD 甲骨文破译模型',
+    url: 'https://github.com/guanhaisu/OBSD',
+    badge: '开源',
+    desc: 'ACL 2024 最佳论文——基于扩散模型的甲骨文破译系统，由华科白翔团队研发。'
   }
 ]
 </script>
@@ -412,6 +589,39 @@ const scholars: Scholar[] = [
 .fact-text{font-size:.88rem;color:var(--ink-light);line-height:1.7}
 .yinxu-note{color:var(--ink-light);font-size:.92rem;line-height:2;text-indent:2em;border-left:3px solid var(--gold-pale);padding-left:16px}
 
+/* === 著名甲骨片 === */
+.artifacts-grid{display:flex;flex-direction:column;gap:16px}
+.artifact-card{background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-lg);padding:28px 32px;box-shadow:var(--shadow);transition:all .3s ease}
+.artifact-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:var(--gold-pale)}
+.artifact-header{display:flex;align-items:center;gap:16px;margin-bottom:12px}
+.artifact-num{display:inline-flex;align-items:center;justify-content:center;min-width:64px;padding:4px 12px;background:var(--paper-light);border:2px solid var(--gold-pale);color:var(--gold);font-family:'KaiTi','STKaiti',serif;font-size:1.05rem;font-weight:bold;letter-spacing:2px}
+.artifact-name{font-family:'KaiTi','STKaiti',serif;font-size:1.15rem;color:var(--ink);letter-spacing:3px;margin:0}
+.artifact-tags{display:flex;gap:8px;margin-bottom:14px;padding-left:80px}
+.artifact-tag{background:var(--paper);color:var(--ink-wash);font-size:.75rem;padding:3px 10px;border:1px solid var(--paper-dark);letter-spacing:1px}
+.artifact-desc{color:var(--ink);font-size:.9rem;line-height:1.9;margin-bottom:10px;padding-left:80px}
+.artifact-significance{color:var(--ink-light);font-size:.85rem;line-height:1.8;padding-left:80px;border-left:3px solid var(--cinnabar-light);padding-left:20px;margin-left:80px}
+
+/* === 大事年表（纵向时间轴） === */
+.timeline-vertical{position:relative;padding:16px 0}
+.timeline-line-v{position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--gold-pale);transform:translateX(-50%)}
+.timeline-event{position:relative;display:flex;align-items:flex-start;margin-bottom:28px}
+.timeline-event.left{flex-direction:row;padding-right:52%}
+.timeline-event.right{flex-direction:row-reverse;padding-left:52%}
+.timeline-dot{position:absolute;left:50%;top:8px;width:12px;height:12px;background:var(--gold);border:2px solid #fff;border-radius:50%;transform:translateX(-50%);z-index:2;box-shadow:var(--shadow-sm);flex-shrink:0}
+.timeline-card{background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-md);padding:16px 20px;box-shadow:var(--shadow);transition:all .3s ease;flex:1}
+.timeline-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:var(--gold-pale)}
+.timeline-year{display:block;font-family:'KaiTi','STKaiti',serif;font-size:1rem;color:var(--gold);font-weight:bold;letter-spacing:2px;margin-bottom:6px}
+.timeline-text{font-size:.88rem;color:var(--ink);line-height:1.8}
+
+/* === 学术资源 === */
+.resources-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.resource-card{display:block;background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-lg);padding:28px 24px 24px;box-shadow:var(--shadow);transition:all .3s ease;text-decoration:none;cursor:pointer}
+.resource-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:var(--gold-pale)}
+.resource-badge{display:inline-block;padding:3px 12px;background:var(--paper-light);border:1px solid var(--gold-pale);color:var(--gold);font-size:.75rem;letter-spacing:2px;margin-bottom:14px}
+.resource-name{font-family:'KaiTi','STKaiti',serif;font-size:1.05rem;color:var(--ink);letter-spacing:2px;margin-bottom:10px}
+.resource-desc{font-size:.85rem;color:var(--ink-wash);line-height:1.8;margin-bottom:14px}
+.resource-link{font-size:.82rem;color:var(--cinnabar-light);letter-spacing:1px}
+
 /* === Footer Quote === */
 .quote-section{padding:40px 0 20px}
 .ink-quote{max-width:680px;margin:0 auto;text-align:center;padding:32px 40px;border-left:3px solid var(--gold-pale);border-right:3px solid var(--gold-pale);background:linear-gradient(90deg,transparent,rgba(184,134,11,.03),transparent)}
@@ -472,6 +682,15 @@ const scholars: Scholar[] = [
   .section-header{padding:14px 18px}
   .section-header h2{font-size:1.05rem;letter-spacing:2px}
   .ink-quote{padding:24px 20px}
+  /* 大事年表移动端改为单列 */
+  .timeline-line-v{left:20px}
+  .timeline-dot{left:20px}
+  .timeline-event.left,.timeline-event.right{flex-direction:row;padding-left:48px;padding-right:0}
+  /* 甲骨片移动端简化缩进 */
+  .artifact-tags,.artifact-desc{padding-left:0}
+  .artifact-significance{margin-left:0;padding-left:16px}
+  .artifact-header{flex-direction:column;align-items:flex-start;gap:8px}
+  .resources-grid{grid-template-columns:1fr}
 }
 @media(max-width:480px){
   .overview-highlights{grid-template-columns:1fr}
