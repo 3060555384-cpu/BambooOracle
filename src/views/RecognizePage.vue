@@ -83,13 +83,26 @@ const results = ref<RecogResult[]>([])
 const history = ref<Array<{ chars: string[]; time: string }>>([])
 const errorMsg = ref('')
 
-// API 地址：本地开发用 localhost，生产环境用相对路径
-const API_BASE = import.meta.env.DEV ? 'http://localhost:5000' : '/api'
+// API 地址：ModelScope Gradio 识别服务
+const API_BASE = 'https://modelscope.cn/studios/Austin888/bamboo-oracle-ocr'
 
 let recogTimer = 0
 let progressTimer = 0
 
 const progressSteps = ['正在加载模型...', '正在预处理图片...', '正在提取特征...', '正在进行分类推理...', '正在生成结果...']
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const result = reader.result as string
+      // 去掉 data:image/xxx;base64, 前缀
+      resolve(result.split(',')[1])
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
 
 function triggerUpload() { fileInput.value?.click() }
 function handleFile(e: Event) { const f = (e.target as HTMLInputElement).files; if (f?.length) { loadImage(f[0]) } }
@@ -124,10 +137,9 @@ async function startRecognize() {
   copied.value = false
   elapsed.value = 0
 
-  // 从 previewUrl (blob URL) 获取 File 并上传
+  // 从 previewUrl (blob URL) 获取 Blob
   const resp = await fetch(previewUrl.value)
   const blob = await resp.blob()
-  const file = new File([blob], 'oracle.jpg', { type: blob.type || 'image/jpeg' })
 
   let stepIdx = 0
   progressText.value = progressSteps[0]
@@ -139,9 +151,15 @@ async function startRecognize() {
   const startTime = performance.now()
 
   try {
-    const formData = new FormData()
-    formData.append('image', file)
-    const res = await fetch(`${API_BASE}/recognize`, { method: 'POST', body: formData })
+    // Gradio API 格式：base64 JSON
+    const b64 = await blobToBase64(blob)
+    const res = await fetch(`${API_BASE}/api/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        data: [{ path: null, url: null, orig_name: null, size: null, data: b64, is_file: false }]
+      })
+    })
     const data = await res.json()
 
     clearInterval(progressTimer)
@@ -149,8 +167,8 @@ async function startRecognize() {
 
     if (data.error) {
       errorMsg.value = data.error
-    } else if (data.results && data.results.length > 0) {
-      results.value = data.results.map((r: { char: string; confidence: number }) => ({
+    } else if (data.data && data.data[0] && data.data[0].results) {
+      results.value = data.data[0].results.map((r: { char: string; confidence: number }) => ({
         char: r.char,
         confidence: r.confidence,
         meaning: '—',
