@@ -83,8 +83,8 @@ const results = ref<RecogResult[]>([])
 const history = ref<Array<{ chars: string[]; time: string }>>([])
 const errorMsg = ref('')
 
-// API 地址：ModelScope Gradio 识别服务
-const API_BASE = 'https://modelscope.cn/studios/Austin888/bamboo-oracle-ocr'
+// API 地址：通过 Vercel 代理转发到 ModelScope
+const API_BASE = '/api'
 
 let recogTimer = 0
 let progressTimer = 0
