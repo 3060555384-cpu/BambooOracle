@@ -26,5 +26,7 @@ dist-ssr
 .vercel
 .env*
 hust-obc-model/
+hf-deploy/
+temp-space/
 api/app.py
 api/requirements.txt
