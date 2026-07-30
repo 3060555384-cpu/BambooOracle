@@ -173,9 +173,9 @@ async function toggleBookmark(item: { char: string; meaning: string; category: s
 
 const stats = reactive([
   { label: '字典收录单字', target: 47, counting: '0' },
-  { label: '甲骨已释读字', target: 1200, counting: '0' },
+  { label: '模型字符类别', target: 1588, counting: '0' },
+  { label: '模型准确率', target: 94.6, counting: '0', suffix: '%' },
   { label: '帖文交流', target: 0, counting: '0' },
-  { label: '社群成员', target: 0, counting: '0' },
 ])
 
 const statsReady = ref(false)
@@ -183,12 +183,8 @@ let statsAnimated = false
 
 async function loadStats() {
   try {
-    const [postsRes, profilesRes] = await Promise.all([
-      supabase.from('posts').select('*', { count: 'exact', head: true }),
-      supabase.from('profiles').select('*', { count: 'exact', head: true })
-    ])
-    if (postsRes.count != null) stats[2].target = postsRes.count
-    if (profilesRes.count != null) stats[3].target = profilesRes.count
+    const postsRes = await supabase.from('posts').select('*', { count: 'exact', head: true })
+    if (postsRes.count != null) stats[3].target = postsRes.count
   } catch (_) { /* 网络异常时保留默认值 */ }
   statsReady.value = true
   if (statsVisible.value && !statsAnimated) {
@@ -232,14 +228,19 @@ function toOracleChar(ch: string): string {
 const dailyOracleChar = computed(() => toOracleChar(dailyWord.char))
 
 // 数字递增动画
-function countUp(stat: { target: number; counting: string }, duration: number) {
+function countUp(stat: { target: number; counting: string; suffix?: string }, duration: number) {
   const target = stat.target
+  const suffix = stat.suffix || ''
   const startTime = performance.now()
   function tick(now: number) {
     const elapsed = now - startTime
     const progress = Math.min(elapsed / duration, 1)
-    const current = Math.floor(target * progress)
-    stat.counting = current.toLocaleString()
+    const current = target * progress
+    if (target === Math.floor(target)) {
+      stat.counting = Math.floor(current).toLocaleString() + suffix
+    } else {
+      stat.counting = current.toFixed(1) + suffix
+    }
     if (progress < 1) requestAnimationFrame(tick)
   }
   requestAnimationFrame(tick)
