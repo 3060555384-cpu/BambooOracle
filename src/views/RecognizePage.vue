@@ -72,7 +72,6 @@
 import { ref, onUnmounted } from 'vue'
 
 interface RecogResult { char: string; meaning: string; type: string; confidence: number }
-interface RecogHistory { chars: string[]; time: string }
 
 const fileInput = ref<HTMLInputElement>()
 const previewUrl = ref('')
@@ -81,35 +80,16 @@ const copied = ref(false)
 const elapsed = ref(0)
 const progressText = ref('正在加载模型...')
 const results = ref<RecogResult[]>([])
-const history = ref<RecogHistory[]>([])
+const history = ref<Array<{ chars: string[]; time: string }>>([])
+const errorMsg = ref('')
+
+// API 地址：本地开发用 localhost，生产环境用相对路径
+const API_BASE = import.meta.env.DEV ? 'http://localhost:5000' : '/api'
 
 let recogTimer = 0
 let progressTimer = 0
 
-const mockPool: RecogResult[] = [
-  { char: '日', meaning: '太阳、白天、日期', type: '象形字', confidence: 96.5 },
-  { char: '月', meaning: '月亮、月份、夜晚', type: '象形字', confidence: 94.2 },
-  { char: '人', meaning: '人类、人们', type: '象形字', confidence: 97.8 },
-  { char: '大', meaning: '大的、伟大', type: '象形字', confidence: 93.1 },
-  { char: '天', meaning: '天空、上天、天帝', type: '会意字', confidence: 91.7 },
-  { char: '雨', meaning: '雨水、降雨', type: '象形字', confidence: 95.3 },
-  { char: '山', meaning: '山峰、山脉', type: '象形字', confidence: 98.2 },
-  { char: '水', meaning: '水流、河流', type: '象形字', confidence: 92.4 },
-  { char: '火', meaning: '火焰、大火星', type: '象形字', confidence: 89.6 },
-  { char: '木', meaning: '树木、木材', type: '象形字', confidence: 94.8 },
-  { char: '王', meaning: '首领、商王', type: '象形字', confidence: 97.1 },
-  { char: '子', meaning: '子女、地支之首', type: '象形字', confidence: 96.3 },
-  { char: '龙', meaning: '神兽、司雨之神', type: '象形字', confidence: 88.5 },
-  { char: '风', meaning: '风雨之风', type: '形声字', confidence: 85.9 },
-  { char: '上', meaning: '上方、上天', type: '指事字', confidence: 99.1 },
-  { char: '下', meaning: '下方、下降', type: '指事字', confidence: 98.7 },
-  { char: '土', meaning: '土地、社神', type: '象形字', confidence: 95.4 },
-  { char: '女', meaning: '女性、配偶', type: '象形字', confidence: 93.8 },
-  { char: '中', meaning: '中央、中等', type: '指事字', confidence: 97.5 },
-  { char: '食', meaning: '食物、食用', type: '会意字', confidence: 90.2 },
-]
-
-const progressSteps = ['正在加载模型...', '正在预处理图片...', '正在提取特征...', '正在进行字符匹配...', '正在生成结果...']
+const progressSteps = ['正在加载模型...', '正在预处理图片...', '正在提取特征...', '正在进行分类推理...', '正在生成结果...']
 
 function triggerUpload() { fileInput.value?.click() }
 function handleFile(e: Event) { const f = (e.target as HTMLInputElement).files; if (f?.length) { loadImage(f[0]) } }
@@ -119,79 +99,88 @@ function loadImage(file: File) {
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
   previewUrl.value = URL.createObjectURL(file)
   results.value = []
+  errorMsg.value = ''
 }
 
 function reset() {
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
   previewUrl.value = ''
   results.value = []
+  errorMsg.value = ''
   copied.value = false
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t }
-  return a
 }
 
 function confidenceClass(v: number) {
-  if (v >= 95) return 'high'
-  if (v >= 85) return 'mid'
+  if (v >= 80) return 'high'
+  if (v >= 50) return 'mid'
   return 'low'
 }
 
-function startRecognize() {
+async function startRecognize() {
+  if (!previewUrl.value) return
   recognizing.value = true
   results.value = []
+  errorMsg.value = ''
   copied.value = false
   elapsed.value = 0
-  let stepIdx = 0
 
+  // 从 previewUrl (blob URL) 获取 File 并上传
+  const resp = await fetch(previewUrl.value)
+  const blob = await resp.blob()
+  const file = new File([blob], 'oracle.jpg', { type: blob.type || 'image/jpeg' })
+
+  let stepIdx = 0
   progressText.value = progressSteps[0]
   progressTimer = window.setInterval(() => {
     stepIdx++
     if (stepIdx < progressSteps.length) progressText.value = progressSteps[stepIdx]
-  }, 400)
+  }, 500)
 
   const startTime = performance.now()
-  recogTimer = window.setTimeout(() => {
+
+  try {
+    const formData = new FormData()
+    formData.append('image', file)
+    const res = await fetch(`${API_BASE}/recognize`, { method: 'POST', body: formData })
+    const data = await res.json()
+
     clearInterval(progressTimer)
-    const count = 1 + Math.floor(Math.random() * 3)
-    const picked = shuffle(mockPool).slice(0, count)
-      .map(r => ({ ...r, confidence: +(r.confidence - Math.random() * 5).toFixed(1) }))
-    results.value = picked
     elapsed.value = +((performance.now() - startTime) / 1000).toFixed(1)
+
+    if (data.error) {
+      errorMsg.value = data.error
+    } else if (data.results && data.results.length > 0) {
+      results.value = data.results.map((r: { char: string; confidence: number }) => ({
+        char: r.char,
+        confidence: r.confidence,
+        meaning: '—',
+        type: '—'
+      }))
+      history.value.unshift({
+        chars: data.results.slice(0, 3).map((r: { char: string }) => r.char),
+        time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+      })
+      if (history.value.length > 10) history.value.pop()
+    } else {
+      errorMsg.value = '未识别到甲骨文字，请确认图片中包含清晰的甲骨文字形'
+    }
+  } catch (err: unknown) {
+    clearInterval(progressTimer)
+    const msg = err instanceof Error ? err.message : String(err)
+    errorMsg.value = `网络错误：${msg}。请确认识别服务已启动。`
+  } finally {
     recognizing.value = false
-
-    history.value.unshift({
-      chars: picked.map(r => r.char),
-      time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-    })
-    if (history.value.length > 20) history.value.pop()
-  }, 2200) as unknown as number
-}
-
-function copyAllResults() {
-  const text = results.value.map(r => r.char + ' - ' + r.meaning + ' (' + r.type + ', ' + r.confidence + '%)').join('\n')
-  if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(text).then(() => { copied.value = true; setTimeout(() => copied.value = false, 2000) })
-  } else {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    document.body.appendChild(ta)
-    ta.select()
-    document.execCommand('copy')
-    document.body.removeChild(ta)
-    copied.value = true
-    setTimeout(() => copied.value = false, 2000)
+    clearInterval(progressTimer)
+    clearTimeout(recogTimer)
   }
 }
 
-onUnmounted(() => {
-  if (recogTimer) clearTimeout(recogTimer)
-  if (progressTimer) clearInterval(progressTimer)
-  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
-})
+function copyAllResults() {
+  const text = results.value.map(r => `${r.char}（置信度 ${r.confidence}%）`).join('\n')
+  navigator.clipboard.writeText(text).then(() => { copied.value = true; setTimeout(() => { copied.value = false }, 2000) })
+}
+
+onUnmounted(() => { clearInterval(progressTimer); clearTimeout(recogTimer) })
 </script>
 
 <style scoped>
