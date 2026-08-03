@@ -249,6 +249,7 @@ async function startRecognize() {
     for (let i = 0; i < 3; i++) {
       const { idx, prob } = indexed[i]
       const char = classMap[String(idx)] || '?'
+      if (char === '?' || char.includes('(')) continue
       results.value.push({ char, confidence: prob * 100 })
     }
     
