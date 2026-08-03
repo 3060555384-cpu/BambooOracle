@@ -62,7 +62,7 @@
           >{{ q }}</button>
         </div>
         <!-- 清空对话 -->
-        <button v-if="chatMessages.length > 0" class="ai-clear-btn" @click="if(confirm('确定清空所有对话？')) chatMessages = []">清空对话</button>
+        <button v-if="chatMessages.length > 0" class="ai-clear-btn" @click="clearChat">清空对话</button>
       </div>
     </section>
 
@@ -331,11 +331,14 @@ const quickQuestions = [
   '什么是「甲骨四堂」？'
 ]
 
+function clearChat() { if (window.confirm('确定清空所有对话？')) chatMessages.value = [] }
+
 async function askAI() {
   const q = inputQuestion.value.trim()
   if (!q || loading.value) return
   chatMessages.value.push({ role: 'user', content: q })
   inputQuestion.value = ''
+
   loading.value = true
   await nextTick()
   scrollToBottom()
