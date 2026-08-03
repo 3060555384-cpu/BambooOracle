@@ -189,7 +189,7 @@ async function startRecognize() {
     
     // 推理
     const feeds = {
-      input_f32: new ort.Tensor('float32', tensor, [1, 3, 128, 128]),
+      input: new ort.Tensor('float32', tensor, [1, 3, 128, 128]),
     }
     const output = await session.run(feeds)
     const logits = output.output.data as Float32Array
