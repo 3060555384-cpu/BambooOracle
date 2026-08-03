@@ -15,7 +15,7 @@ with open(MAPPING_PATH, "r", encoding="utf-8") as f:
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = torchvision.models.resnet50(pretrained=False)
 model.fc = nn.Linear(model.fc.in_features, NUM_CLASSES)
-checkpoint = torch.load(MODEL_PATH, map_location=device)
+checkpoint = torch.load(MODEL_PATH, map_location=device, weights_only=True)
 model.load_state_dict(checkpoint["state_dict"])
 model.to(device)
 model.eval()

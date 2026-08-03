@@ -32,7 +32,9 @@
       <div class="progress-track"><div class="progress-fill" :style="{ width: modelProgress + '%' }"></div></div>
     </div>
 
-    <div v-if="errorMsg" class="error-box">{{ errorMsg }}</div>
+    <div v-if="errorMsg" class="error-box">{{ errorMsg }}
+      <button v-if="errorMsg.includes('加载失败')" @click="retryLoad" class="btn-retry">重试</button>
+    </div>
 
     <div v-if="results.length > 0" class="results-section">
       <div class="ink-seal">
@@ -126,7 +128,7 @@ async function loadWithCache(key: string, url: string): Promise<ArrayBuffer> {
 onMounted(async () => {
   try {
     // 用 CDN 加载 onnxruntime-web 的 wasm 文件
-    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/'
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0/dist/'
     
     // 同步加载映射表和模型
     const [mapResp] = await Promise.all([
@@ -149,6 +151,8 @@ onMounted(async () => {
     errorMsg.value = '模型加载失败：' + (err.message || String(err))
   }
 })
+
+function retryLoad() { modelLoading.value = true; errorMsg.value = ''; modelProgress.value = 0; location.reload() }
 
 // ── 图片处理 ──
 function onFileChange(e: Event) {

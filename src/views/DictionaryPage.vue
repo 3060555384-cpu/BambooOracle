@@ -960,8 +960,8 @@ function toOracleChar(ch: string): string {
   return ORACLE_CHAR_MAP[ch] || ch
 }
 
-function hasOracleGlyph(_char: string): boolean {
-  return true
+function hasOracleGlyph(char: string): boolean {
+  return 0x4E00 <= char.charCodeAt(0) && char.charCodeAt(0) <= 0x9FFF
 }
 
 function togglePinyin(letter: string) {

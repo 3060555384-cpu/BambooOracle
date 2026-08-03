@@ -62,7 +62,7 @@
           >{{ q }}</button>
         </div>
         <!-- 清空对话 -->
-        <button v-if="chatMessages.length > 0" class="ai-clear-btn" @click="chatMessages = []">清空对话</button>
+        <button v-if="chatMessages.length > 0" class="ai-clear-btn" @click="if(confirm('确定清空所有对话？')) chatMessages = []">清空对话</button>
       </div>
     </section>
 
