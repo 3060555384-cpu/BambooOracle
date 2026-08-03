@@ -12,10 +12,10 @@ const supabaseUrl = import.meta.env.DEV
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('缺少 Supabase 环境变量，请检查 .env.local')
+  console.warn('Supabase 环境变量缺失，部分功能不可用。请检查 .env.local 中的 VITE_SUPABASE_ANON_KEY')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -28,13 +28,22 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 export async function uploadAvatar(userId: string, file: File): Promise<string | null> {
   const ext = file.name.split('.').pop()?.toLowerCase() || 'png'
   const path = `${userId}.${ext}`
-  const { error } = await supabase.storage
-    .from('avatars')
-    .upload(path, file, { upsert: true, contentType: file.type })
-  if (error) {
-    console.error('头像上传失败:', error.message)
+  try {
+    const { error } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true, contentType: file.type })
+    if (error) {
+      if (error.message.includes('not found') || error.message.includes('exist')) {
+        console.error('Storage bucket "avatars" 不存在，请在 Supabase 控制台创建')
+      } else {
+        console.error('头像上传失败:', error.message)
+      }
+      return null
+    }
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+    return urlData.publicUrl
+  } catch (err) {
+    console.error('头像上传异常:', err)
     return null
   }
-  const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
-  return urlData.publicUrl
 }

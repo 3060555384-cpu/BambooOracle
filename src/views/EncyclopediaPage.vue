@@ -169,7 +169,7 @@
             </div>
             <div class="fact-item">
               <span class="fact-icon">&#x1F3DB;</span>
-              <span class="fact-text">遗址总面穏约36平方公里，包含宫殿、王陵、青铜器作坊、居民区等多个功能区</span>
+              <span class="fact-text">遗址总面积约36平方公里，包含宫殿、王陵、青铜器作坊、居民区等多个功能区</span>
             </div>
           </div>
           <p class="yinxu-note">殷墟的发掘不仅出土了数以万计的甲骨文，还包含青铜器、玉器、骇骨制品等大量珍贵文物，为研究商代社会结构、宗教信仰、科技水平提供了丰富的实物资料。如今，殷墟博物馆已建成开放，是全球甲骨学研究的重要基地。</p>

@@ -27,7 +27,7 @@
       </div>
     </div>
     <div v-else class="post-form login-hint">
-      <p>请先<a href="/login">登录</a>后发帖交流</p>
+      <p>请先<router-link to="/login">登录</router-link>后发帖交流</p>
     </div>
     <div class="post-list">
       <p v-if="loading" class="empty-state">加载中...</p>
@@ -53,9 +53,9 @@
         </div>
         <p class="post-body">{{ post.content }}</p>
         <div class="post-foot">
-          <button @click="post.liked = !post.liked" :class="{ liked: post.liked }">
-            <span class="heart-icon">{{ post.liked ? '\u2764' : '\u2661' }}</span>
-            {{ (post.likes || 0) + (post.liked ? 1 : 0) }}
+          <button @click="toggleLike(post)" :class="{ liked: post._liked }">
+            <span class="heart-icon">{{ post._liked ? '\u2764' : '\u2661' }}</span>
+            {{ post.likes || 0 }}
           </button>
           <button @click="toggleComments(post)">
             &#128172; {{ post._comments?.length || 0 }}
@@ -86,7 +86,7 @@
             <input v-model="post._replyText" type="text" :placeholder="post._replyTo ? '回复 ' + post._replyTo.author + '...' : '写下你的看法...'" class="comment-input" @keyup.enter="addComment(post)" />
             <button class="btn-ink comment-btn" @click="addComment(post)" :disabled="!post._replyText?.trim()">回复</button>
           </div>
-          <p v-else class="empty-state" style="padding:12px;font-size:.8rem">请<a href="/login">登录</a>后发表评论</p>
+          <p v-else class="empty-state" style="padding:12px;font-size:.8rem">请<router-link to="/login">登录</router-link>后发表评论</p>
         </div>
       </article>
     </div>
@@ -94,12 +94,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { supabase } from '../lib/supabase'
 import { currentUser, recoverUser, avatarVersion } from '../lib/auth'
 
 interface Comment { id: number; post_id: number; user_id: string; author: string; content: string; created_at: string; reply_to_user_id?: string; reply_to_author?: string; avatar_url?: string }
-interface Post { id: number; user_id: string; author: string; tag: string; content: string; likes: number; liked: boolean; shared: boolean; created_at: string; _comments: Comment[]; _showComments: boolean; _replyText: string; _replyTo: Comment | null; avatar_url?: string }
+interface Post { id: number; user_id: string; author: string; tag: string; content: string; likes: number; _liked: boolean; shared: boolean; created_at: string; _comments: Comment[]; _showComments: boolean; _replyText: string; _replyTo: Comment | null; avatar_url?: string }
 
 // 直接引用模块级全局登录状态（ES 模块单例，与 App.vue 同一个 ref 引用）
 const user = currentUser
@@ -149,6 +149,10 @@ onMounted(() => {
   document.addEventListener('click', onAvatarBtnClick)
 })
 
+onUnmounted(() => {
+  document.removeEventListener('click', onAvatarBtnClick)
+})
+
 // 用户头像缓存
 const avatarMap = ref<Record<string, string>>({})
 
@@ -168,31 +172,28 @@ const filteredPosts = computed(() => selTag.value ? posts.value.filter(p => p.ta
 
 async function loadPosts() {
   loading.value = true
-  const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false })
-  if (!error && data) {
+  try {
+    const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false })
+    if (error) { console.error('加载帖子失败:', error.message); return }
+    if (!data || data.length === 0) { posts.value = []; return }
     const postList = data as any[]
-    // 并行加载所有帖子的评论，避免串行阻塞
     const commentPromises = postList.map(p =>
       supabase.from('comments').select('*').eq('post_id', p.id).order('created_at', { ascending: true })
     )
     const results = await Promise.all(commentPromises)
 
-    // 收集所有涉及的用户 ID，批量查头像
     const userIds = new Set<string>()
     postList.forEach(p => userIds.add(p.user_id))
     results.forEach(({ data: comments }) => {
       (comments || []).forEach((c: any) => userIds.add(c.user_id))
     })
 
-    // 批量查询用户头像
     if (userIds.size > 0) {
       const { data: profiles } = await supabase.from('profiles')
         .select('id,avatar_url').in('id', Array.from(userIds))
       if (profiles) {
         (profiles as any[]).forEach((p: any) => {
-          if (p.avatar_url) {
-            avatarMap.value = { ...avatarMap.value, [p.id]: p.avatar_url }
-          }
+          if (p.avatar_url) avatarMap.value = { ...avatarMap.value, [p.id]: p.avatar_url }
         })
       }
     }
@@ -205,42 +206,101 @@ async function loadPosts() {
       p._replyText = ''
       p._replyTo = null
       p.likes = p.likes || 0
-      p.liked = false
+      p._liked = localStorage.getItem('liked_' + p.id) === '1'
       p.shared = false
     })
     posts.value = postList
+  } catch (err) {
+    console.error('加载帖子异常:', err)
+  } finally {
+    loading.value = false
   }
-  loading.value = false
 }
 
 async function submitPost() {
   if (!newPost.value.trim() || newPost.value.length > 500 || !user.value || posting.value) return
   posting.value = true
-  const { data, error } = await supabase.from('posts').insert({
-    user_id: user.value.id,
-    author: user.value.nickname || '匿名学者',
-    content: newPost.value,
-    tag: newTag.value
-  }).select().single()
-  if (!error && data) {
-    data.avatar_url = user.value.avatar_url || ''
-    data._comments = []
-    data._showComments = false
-    data._replyText = ''
-    data._replyTo = null
-    data.likes = 0
-    data.liked = false
-    data.shared = false
-    posts.value.unshift(data as Post)
-    newPost.value = ''
+  try {
+    const { data, error } = await supabase.from('posts').insert({
+      user_id: user.value.id,
+      author: user.value.nickname || '匿名学者',
+      content: newPost.value,
+      tag: newTag.value
+    }).select().single()
+    if (error) { alert('发布失败: ' + error.message); return }
+    if (data) {
+      data.avatar_url = user.value.avatar_url || ''
+      data._comments = []
+      data._showComments = false
+      data._replyText = ''
+      data._replyTo = null
+      data.likes = 0
+      data._liked = false
+      data.shared = false
+      posts.value.unshift(data as Post)
+      newPost.value = ''
+    }
+  } catch (err) {
+    alert('发布异常，请重试')
+  } finally {
+    posting.value = false
   }
-  posting.value = false
+}
+
+async function toggleLike(post: Post) {
+  const oldLiked = post._liked
+  const oldLikes = post.likes
+  const newLiked = !post._liked
+  post._liked = newLiked
+  post.likes = Math.max(0, post.likes + (newLiked ? 1 : -1))
+  localStorage.setItem('liked_' + post.id, newLiked ? '1' : '0')
+  try {
+    const { error } = await supabase.from('posts').update({ likes: post.likes }).eq('id', post.id)
+    if (error) {
+      // 回滚
+      post._liked = oldLiked
+      post.likes = oldLikes
+      localStorage.setItem('liked_' + post.id, oldLiked ? '1' : '0')
+    }
+  } catch {
+    post._liked = oldLiked
+    post.likes = oldLikes
+    localStorage.setItem('liked_' + post.id, oldLiked ? '1' : '0')
+  }
 }
 
 async function deletePost(id: number) {
   if (!confirm('确定删除这条帖子吗？')) return
-  const { error } = await supabase.from('posts').delete().eq('id', id)
-  if (!error) posts.value = posts.value.filter(p => p.id !== id)
+  try {
+    await supabase.from('comments').delete().eq('post_id', id)
+    const { error } = await supabase.from('posts').delete().eq('id', id)
+    if (error) { alert('删除失败: ' + error.message); return }
+    posts.value = posts.value.filter(p => p.id !== id)
+  } catch {
+    alert('删除异常，请重试')
+  }
+}
+
+function sharePost(post: Post) {
+  const text = '【竹下问甲】' + post.author + ': ' + post.content.slice(0, 50) + '...'
+  const url = window.location.origin
+  if (navigator.share) {
+    navigator.share({ title: '竹下问甲 - 甲骨文识别', text, url }).catch(() => {})
+  } else {
+    const fullText = text + ' ' + url
+    navigator.clipboard?.writeText(fullText).then(() => {
+      post.shared = true; setTimeout(() => post.shared = false, 2000)
+    }).catch(() => {
+      const ta = document.createElement('textarea')
+      ta.value = fullText
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      post.shared = true
+      setTimeout(() => post.shared = false, 2000)
+    })
+  }
 }
 
 async function toggleComments(post: Post) {
@@ -301,23 +361,6 @@ async function addComment(post: Post) {
   }
 }
 
-function sharePost(post: Post) {
-  const text = '【竹下问甲】' + post.author + ': ' + post.content.slice(0, 50) + '...'
-  if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(text).then(() => { post.shared = true; setTimeout(() => post.shared = false, 2000) })
-  } else {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    document.body.appendChild(ta)
-    ta.select()
-    document.execCommand('copy')
-    document.body.removeChild(ta)
-    post.shared = true
-    setTimeout(() => post.shared = false, 2000)
-  }
-}
-
-// 监听当前用户头像变化，全局同步到社群所有帖子和评论
 watch(() => currentUser.value?.avatar_url, (newUrl) => {
   if (!user.value) return
   avatarMap.value = { ...avatarMap.value, [user.value.id]: newUrl || '' }

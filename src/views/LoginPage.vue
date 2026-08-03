@@ -90,7 +90,10 @@ async function handleSubmit() {
       if (data.session && data.user) {
         // 情况1：邮件自动确认（mailer_autoconfirm=true），直接登录
         setCurrentUser({ id: data.user.id, email: data.user.email ?? form.email, nickname: nick })
-        supabase.from('profiles').upsert({ id: data.user.id, nickname: nick }).then(() => {}, () => {})
+        supabase.from('profiles').upsert({ id: data.user.id, nickname: nick }).then(
+          () => {},
+          (err) => console.error('注册时 profile 写入失败:', err.message)
+        )
         succMsg.value = '注册成功！'
         setTimeout(() => {
           switchMode()
@@ -98,7 +101,10 @@ async function handleSubmit() {
         }, 800)
       } else if (data.user) {
         // 情况2：有用户但无 session，需邮箱验证
-        supabase.from('profiles').upsert({ id: data.user.id, nickname: nick }).then(() => {}, () => {})
+        supabase.from('profiles').upsert({ id: data.user.id, nickname: nick }).then(
+          () => {},
+          (err) => console.error('注册时 profile 写入失败:', err.message)
+        )
         succMsg.value = '注册成功！请查收邮箱验证邮件后登录。'
         setTimeout(() => switchMode(), 2500)
       } else {

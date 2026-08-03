@@ -159,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase, uploadAvatar } from '../lib/supabase'
 import { currentUser, setCurrentUser, logoutUser, recoverUser, avatarVersion, bumpAvatarVersion } from '../lib/auth'
@@ -262,7 +262,12 @@ async function saveNick() {
   const val = nickDraft.value.trim()
   if (val && user.value) {
     setCurrentUser({ ...user.value, nickname: val })
-    await supabase.from('profiles').update({ nickname: val }).eq('id', user.value.id)
+    try {
+      const { error } = await supabase.from('profiles').update({ nickname: val }).eq('id', user.value.id)
+      if (error) alert('昵称保存失败: ' + error.message)
+    } catch {
+      alert('昵称保存异常，请重试')
+    }
   }
   editingNick.value = false
 }
@@ -271,7 +276,6 @@ function cancelEditNick() {
   editingNick.value = false
 }
 
-// Tab 导航
 const tabs = [
   { key: 'bookmarks', label: '我的收藏' },
   { key: 'history', label: '识别历史' },
@@ -279,44 +283,48 @@ const tabs = [
 ]
 const activeTab = ref('bookmarks')
 
-// 收藏数据
 const bookmarks = ref<{ char: string; meaning: string; category: string }[]>([])
-
-// 历史数据
 const historyItems = ref<{ chars: string; time: string }[]>([])
 
 async function loadBookmarks() {
   if (!user.value) return
-  const { data } = await supabase.from('bookmarks').select('*').eq('user_id', user.value.id).order('created_at', { ascending: false })
-  if (data) bookmarks.value = data
+  try {
+    const { data } = await supabase.from('bookmarks').select('*').eq('user_id', user.value.id).order('created_at', { ascending: false })
+    if (data) bookmarks.value = data
+  } catch { /* 网络异常时保留旧数据 */ }
 }
 
 async function loadHistory() {
-  if (!user.value) {
-    historyItems.value = []
-    return
-  }
-  const { data } = await supabase.from('recognition_history').select('*').eq('user_id', user.value.id).order('created_at', { ascending: false })
-  if (data && data.length > 0) {
-    historyItems.value = data.map((d: any) => ({
-      chars: d.chars,
-      time: new Date(d.created_at).toLocaleString('zh-CN')
-    }))
-  }
+  if (!user.value) { historyItems.value = []; return }
+  try {
+    const { data } = await supabase.from('recognition_history').select('*').eq('user_id', user.value.id).order('created_at', { ascending: false })
+    if (data && data.length > 0) {
+      historyItems.value = data.map((d: any) => ({
+        chars: d.chars,
+        time: new Date(d.created_at).toLocaleString('zh-CN')
+      }))
+    }
+  } catch { /* 网络异常时保留旧数据 */ }
 }
 
 async function clearBookmarks() {
   if (!user.value) return
   if (!confirm('确定要清空所有收藏吗？此操作不可撤销。')) return
-  const { error } = await supabase.from('bookmarks').delete().eq('user_id', user.value.id)
-  if (!error) bookmarks.value = []
+  try {
+    const { error } = await supabase.from('bookmarks').delete().eq('user_id', user.value.id)
+    if (error) { alert('清空失败: ' + error.message); return }
+    bookmarks.value = []
+  } catch { alert('清空异常，请重试') }
 }
 
 async function clearHistory() {
   if (!user.value) return
   if (!confirm('确定要清空所有识别历史吗？此操作不可撤销。')) return
-  const { error } = await supabase.from('recognition_history').delete().eq('user_id', user.value.id)
-  if (!error) historyItems.value = []
+  try {
+    const { error } = await supabase.from('recognition_history').delete().eq('user_id', user.value.id)
+    if (error) { alert('清空失败: ' + error.message); return }
+    historyItems.value = []
+  } catch { alert('清空异常，请重试') }
 }
 
 function goToDictionary() {
@@ -340,6 +348,10 @@ watch(user, (newUser) => {
 onMounted(() => {
   recoverUser()
   document.addEventListener('click', onAvatarBtnClick)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', onAvatarBtnClick)
 })
 </script>
 

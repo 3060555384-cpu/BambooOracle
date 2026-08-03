@@ -5,265 +5,32 @@
       <p>上传甲骨拓片或单字图片，AI 自动辨识文字</p>
       <hr class="ink-divider" />
     </div>
-    <div class="upload-area" @dragover.prevent @drop.prevent="handleDrop" :class="{ 'has-image': previewUrl }">
-      <input type="file" ref="fileInput" id="recognize-file" name="image" accept="image/*" @change="handleFile" style="display:none" />
-      <div v-if="!previewUrl" class="upload-placeholder" @click="triggerUpload">
-        <div class="upload-frame">
-          <div class="upload-seal">甲</div>
-          <p class="upload-hint">点击或拖拽图片至此处</p>
-          <p class="upload-sub">支持 JPG / PNG / WEBP 格式</p>
-        </div>
-      </div>
-      <div v-else class="preview-section">
-        <img :src="previewUrl" class="preview-img" alt="preview" />
-        <div class="preview-actions">
-          <button class="btn-ink" @click="startRecognize" :disabled="recognizing">
-            <span v-if="recognizing" class="btn-spinner"></span>
-            {{ recognizing ? '辨识中...' : '开始识甲' }}
-          </button>
-          <button class="btn-outline" @click="reset">重新上传</button>
-        </div>
-      </div>
-    </div>
-    <div v-if="recognizing" class="recognizing-banner">
-      <div class="recognize-progress">
-        <div class="progress-bar"><div class="progress-fill"></div></div>
-        <p class="progress-text">{{ progressText }}</p>
-      </div>
-    </div>
-    <div v-if="results.length > 0" class="results-section">
-      <div class="results-summary">
-        <span class="summary-icon">&#10003;</span>
-        共识别出 <strong>{{ results.length }}</strong> 个甲骨文字 &middot; 耗时 {{ elapsed }}s
-      </div>
-      <div v-for="(r, i) in results" :key="i" class="result-card" :style="{ animationDelay: (i * 0.15) + 's' }">
-        <div class="result-rank">{{ i + 1 }}</div>
-        <div class="result-char-wrap"><div class="result-char">{{ r.char }}</div><div class="result-stamp">已识</div></div>
-        <div class="result-body">
-          <div class="result-row"><span class="result-label">释义</span><span class="result-value">{{ r.meaning }}</span></div>
-          <div class="result-row"><span class="result-label">字型</span><span class="result-value">{{ r.type }}</span></div>
-          <div class="result-row"><span class="result-label">置信度</span><span class="result-value confidence-wrap"><span class="confidence-bar"><span class="confidence-fill" :style="{ width: r.confidence + '%' }" :class="confidenceClass(r.confidence)"></span></span><span class="confidence-num">{{ r.confidence }}%</span></span></div>
-        </div>
-      </div>
-      <div class="result-actions">
-        <button class="btn-gold" @click="copyAllResults">{{ copied ? '已复制!' : '复制全部结果' }}</button>
-      </div>
-    </div>
-    <div v-if="history.length > 0" class="history-section">
-      <h3 class="section-title">识别历史</h3>
-      <div class="history-list">
-        <div v-for="(h, i) in history" :key="i" class="history-item">
-          <span class="history-chars">{{ h.chars.join('') }}</span>
-          <span class="history-time">{{ h.time }}</span>
-          <button class="history-del" @click="history.splice(i,1)" title="删除">&times;</button>
-        </div>
-      </div>
+    <div class="iframe-container">
+      <iframe 
+        src="https://modelscope.cn/studios/Austin888/bamboo-oracle-ocr" 
+        frameborder="0"
+        width="100%"
+        height="700px"
+        title="甲骨文识别"
+      ></iframe>
     </div>
     <div class="tips-section">
       <div class="tips-card">
         <h4>识甲技巧</h4>
-        <ul><li>确保图片清晰，光照均匀</li><li>单字识别时尽量裁剪至仅含一字</li><li>拓片图片建议先做二值化处理</li><li>支持同时识别多个文字</li></ul>
+        <ul><li>确保图片清晰，光照均匀</li><li>单字识别时尽量裁剪至仅含一字</li><li>拓片图片建议先做二值化处理</li></ul>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
-
-interface RecogResult { char: string; meaning: string; type: string; confidence: number }
-
-const fileInput = ref<HTMLInputElement>()
-const previewUrl = ref('')
-const recognizing = ref(false)
-const copied = ref(false)
-const elapsed = ref(0)
-const progressText = ref('正在加载模型...')
-const results = ref<RecogResult[]>([])
-const history = ref<Array<{ chars: string[]; time: string }>>([])
-const errorMsg = ref('')
-
-// API 地址：通过 Vercel 代理转发到 ModelScope
-const API_BASE = '/api'
-
-let recogTimer = 0
-let progressTimer = 0
-
-const progressSteps = ['正在加载模型...', '正在预处理图片...', '正在提取特征...', '正在进行分类推理...', '正在生成结果...']
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      const result = reader.result as string
-      // 去掉 data:image/xxx;base64, 前缀
-      resolve(result.split(',')[1])
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
-}
-
-function triggerUpload() { fileInput.value?.click() }
-function handleFile(e: Event) { const f = (e.target as HTMLInputElement).files; if (f?.length) { loadImage(f[0]) } }
-function handleDrop(e: DragEvent) { const f = e.dataTransfer?.files; if (f?.length && f[0].type.startsWith('image/')) { loadImage(f[0]) } }
-
-function loadImage(file: File) {
-  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
-  previewUrl.value = URL.createObjectURL(file)
-  results.value = []
-  errorMsg.value = ''
-}
-
-function reset() {
-  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
-  previewUrl.value = ''
-  results.value = []
-  errorMsg.value = ''
-  copied.value = false
-}
-
-function confidenceClass(v: number) {
-  if (v >= 80) return 'high'
-  if (v >= 50) return 'mid'
-  return 'low'
-}
-
-async function startRecognize() {
-  if (!previewUrl.value) return
-  recognizing.value = true
-  results.value = []
-  errorMsg.value = ''
-  copied.value = false
-  elapsed.value = 0
-
-  // 从 previewUrl (blob URL) 获取 Blob
-  const resp = await fetch(previewUrl.value)
-  const blob = await resp.blob()
-
-  let stepIdx = 0
-  progressText.value = progressSteps[0]
-  progressTimer = window.setInterval(() => {
-    stepIdx++
-    if (stepIdx < progressSteps.length) progressText.value = progressSteps[stepIdx]
-  }, 500)
-
-  const startTime = performance.now()
-
-  try {
-    // Gradio API 格式：base64 JSON
-    const b64 = await blobToBase64(blob)
-    const res = await fetch(`${API_BASE}/api/predict`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: [{ path: null, url: null, orig_name: null, size: null, data: b64, is_file: false }]
-      })
-    })
-    const data = await res.json()
-
-    clearInterval(progressTimer)
-    elapsed.value = +((performance.now() - startTime) / 1000).toFixed(1)
-
-    if (data.error) {
-      errorMsg.value = data.error
-    } else if (data.data && data.data[0] && data.data[0].results) {
-      results.value = data.data[0].results.map((r: { char: string; confidence: number }) => ({
-        char: r.char,
-        confidence: r.confidence,
-        meaning: '—',
-        type: '—'
-      }))
-      history.value.unshift({
-        chars: data.results.slice(0, 3).map((r: { char: string }) => r.char),
-        time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-      })
-      if (history.value.length > 10) history.value.pop()
-    } else {
-      errorMsg.value = '未识别到甲骨文字，请确认图片中包含清晰的甲骨文字形'
-    }
-  } catch (err: unknown) {
-    clearInterval(progressTimer)
-    const msg = err instanceof Error ? err.message : String(err)
-    errorMsg.value = `网络错误：${msg}。请确认识别服务已启动。`
-  } finally {
-    recognizing.value = false
-    clearInterval(progressTimer)
-    clearTimeout(recogTimer)
-  }
-}
-
-function copyAllResults() {
-  const text = results.value.map(r => `${r.char}（置信度 ${r.confidence}%）`).join('\n')
-  navigator.clipboard.writeText(text).then(() => { copied.value = true; setTimeout(() => { copied.value = false }, 2000) })
-}
-
-onUnmounted(() => { clearInterval(progressTimer); clearTimeout(recogTimer) })
 </script>
 
 <style scoped>
-.recognize-page{max-width:800px;margin:0 auto;padding:0 20px 60px}
-.upload-area{background:#fff;border:2px dashed var(--gold-pale);border-radius:var(--radius-lg);padding:60px 20px;text-align:center;min-height:240px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .3s ease}
-.upload-area:hover{border-color:var(--gold);background:var(--paper-light)}
-.upload-area.has-image{border-style:solid;border-color:var(--paper-dark);cursor:default;padding:30px 20px}
-.upload-placeholder{width:100%}
-.upload-frame{padding:40px}
-.upload-seal{display:inline-flex;width:60px;height:60px;align-items:center;justify-content:center;border:2px solid var(--gold-pale);color:var(--gold-pale);font-family:'KaiTi','STKaiti',serif;font-size:26px;margin-bottom:20px;transform:rotate(-5deg)}
-.upload-area:hover .upload-seal{border-color:var(--gold);color:var(--gold)}
-.upload-hint{font-size:1.05rem;color:var(--ink-light);letter-spacing:2px;margin-bottom:6px}
-.upload-sub{font-size:.85rem;color:var(--ink-wash)}
-.preview-section{width:100%}
-.preview-img{max-width:100%;max-height:300px;border-radius:var(--radius-md);margin-bottom:20px;border:1px solid var(--paper-dark)}
-.preview-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.btn-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-right:6px;vertical-align:middle}
-@keyframes spin{to{transform:rotate(360deg)}}
-.recognizing-banner{padding:30px 0}
-.recognize-progress{max-width:400px;margin:0 auto;text-align:center}
-.progress-bar{height:4px;background:var(--paper-dark);border-radius:2px;overflow:hidden;margin-bottom:12px}
-.progress-fill{height:100%;background:linear-gradient(90deg,var(--gold-pale),var(--gold));border-radius:2px;animation:progressAnim 2.2s ease-in-out}
-@keyframes progressAnim{0%{width:0}30%{width:35%}70%{width:70%}100%{width:100%}}
-.progress-text{font-size:.85rem;color:var(--ink-wash);letter-spacing:1px}
-.results-section{margin-top:30px}
-.results-summary{text-align:center;margin-bottom:20px;font-size:.95rem;color:var(--ink-light);letter-spacing:1px;animation:fadeIn .5s ease}
-.results-summary .summary-icon{color:var(--jade);margin-right:4px}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.result-card{background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-lg);padding:28px 28px 28px 20px;display:flex;gap:24px;align-items:center;box-shadow:var(--shadow);margin-bottom:12px;opacity:0;animation:cardSlide .5s ease forwards}
-@keyframes cardSlide{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:translateY(0)}}
-.result-card:hover{box-shadow:var(--shadow-md)}
-.result-rank{width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 30% 30%,rgba(139,119,80,.1) 0%,transparent 50%),linear-gradient(135deg,#e6d8c0,#dfd0b8);color:#3d3522;font-size:.8rem;font-weight:bold;border-radius:50%;flex-shrink:0;border:1px solid var(--gold-pale);box-shadow:inset 0 1px 2px rgba(0,0,0,.1),0 2px 4px var(--shadow);text-shadow:1px 1px 0 rgba(255,255,255,.3)}
-.result-char-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0;min-width:90px}
-.result-char{font-family:'KaiTi','STKaiti',serif;font-size:60px;color:#3d3522;line-height:1;background:radial-gradient(circle at 20% 30%,rgba(139,119,80,.07) 0%,transparent 40%),radial-gradient(circle at 80% 70%,rgba(139,119,80,.05) 0%,transparent 35%),linear-gradient(135deg,#f5ede0,#ece0cc 30%,#e6d8c0 60%,#f0e5d5);border:2px solid var(--gold-pale);border-radius:8px;box-shadow:inset 0 2px 4px rgba(0,0,0,.1),inset 0 -1px 0 rgba(255,255,255,.6),0 3px 8px var(--shadow);text-shadow:1px 1px 0 rgba(255,255,255,.4),-1px -1px 0 rgba(0,0,0,.15);padding:8px 16px;display:inline-block}
-.result-stamp{font-size:11px;color:var(--cinnabar-light);border:1px solid var(--cinnabar-light);padding:2px 10px;font-family:'KaiTi','STKaiti',serif;letter-spacing:2px}
-.result-body{flex:1;min-width:0}
-.result-row{display:flex;align-items:center;padding:6px 0;border-bottom:1px solid var(--paper);gap:12px}
-.result-row:last-child{border-bottom:none}
-.result-label{font-size:.82rem;color:var(--ink-wash);min-width:60px;letter-spacing:1px;flex-shrink:0}
-.result-value{font-size:.95rem;color:var(--ink);letter-spacing:1px}
-.confidence-wrap{display:flex;align-items:center;gap:10px;flex:1}
-.confidence-bar{flex:1;height:6px;background:var(--paper-dark);border-radius:3px;overflow:hidden}
-.confidence-fill{height:100%;border-radius:3px;transition:width .6s ease}
-.confidence-fill.high{background:var(--jade)}
-.confidence-fill.mid{background:var(--gold)}
-.confidence-fill.low{background:var(--cinnabar-light)}
-.confidence-num{font-size:.85rem;font-weight:bold;min-width:48px}
-.result-actions{display:flex;justify-content:center;margin-top:20px;gap:12px}
-.history-section{margin-top:40px}
-.section-title{font-family:'KaiTi','STKaiti',serif;font-size:1.1rem;color:var(--ink);letter-spacing:3px;margin-bottom:16px;text-align:center}
-.history-list{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
-.history-item{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--paper-dark);border-radius:var(--radius-md);padding:6px 12px;font-size:.85rem;color:var(--ink);transition:all .2s}
-.history-item:hover{border-color:var(--gold-pale)}
-.history-chars{font-family:'KaiTi','STKaiti',serif;font-size:1.1rem;letter-spacing:2px;color:var(--ink)}
-.history-time{font-size:.75rem;color:var(--ink-wash)}
-.history-del{background:none;border:none;color:var(--ink-wash);cursor:pointer;font-size:1rem;padding:0 2px;line-height:1}
-.history-del:hover{color:var(--cinnabar)}
+.recognize-page{max-width:860px;margin:0 auto;padding:0 20px 60px}
+.iframe-container{border:2px solid var(--gold-pale);border-radius:var(--radius-lg);overflow:hidden;background:#fff;min-height:700px}
 .tips-section{margin-top:40px}
 .tips-card{background:var(--paper);border:1px solid var(--paper-dark);border-radius:var(--radius-md);padding:20px 24px}
 .tips-card h4{font-size:.95rem;color:var(--gold);letter-spacing:2px;margin-bottom:12px}
 .tips-card li{font-size:.85rem;color:var(--ink-wash);margin:6px 0;padding-left:4px}
-@media(max-width:600px){
-  .result-card{flex-direction:column;text-align:center;padding:24px 16px}
-  .result-rank{display:none}
-  .result-row{flex-direction:column;gap:2px;align-items:center}
-  .confidence-wrap{justify-content:center}
-}
 </style>

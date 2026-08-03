@@ -6,6 +6,10 @@
     "api/deepseek.ts": {
       "memory": 512,
       "maxDuration": 30
+    },
+    "api/predict.ts": {
+      "memory": 256,
+      "maxDuration": 60
     }
   },
   "rewrites": [

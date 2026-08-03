@@ -975,28 +975,31 @@ function closeDetail() { selected.value = null }
 const bookmarks = ref<Array<{char: string; meaning: string; category: string}>>([])
 
 async function loadBookmarks() {
-  const { data: sess } = await supabase.auth.getSession()
-  if (sess.session?.user) {
-    const { data } = await supabase.from('bookmarks').select('*').eq('user_id', sess.session.user.id)
-    if (data) bookmarks.value = data
-  }
+  try {
+    const { data: sess } = await supabase.auth.getSession()
+    if (sess.session?.user) {
+      const { data } = await supabase.from('bookmarks').select('*').eq('user_id', sess.session.user.id)
+      if (data) bookmarks.value = data
+    }
+  } catch { /* 网络异常时保留旧数据 */ }
 }
 
 async function saveBookmark(item: { char: string; meaning: string; category: string }) {
-  const { data: sess } = await supabase.auth.getSession()
-  if (!sess.session?.user) return
-  await supabase.from('bookmarks').insert({
-    user_id: sess.session.user.id,
-    char: item.char,
-    meaning: item.meaning,
-    category: item.category
-  })
+  try {
+    const { data: sess } = await supabase.auth.getSession()
+    if (!sess.session?.user) return
+    await supabase.from('bookmarks').insert({
+      user_id: sess.session.user.id, char: item.char, meaning: item.meaning, category: item.category
+    })
+  } catch { /* 静默失败 */ }
 }
 
 async function removeBookmark(char: string) {
-  const { data: sess } = await supabase.auth.getSession()
-  if (!sess.session?.user) return
-  await supabase.from('bookmarks').delete().eq('user_id', sess.session.user.id).eq('char', char)
+  try {
+    const { data: sess } = await supabase.auth.getSession()
+    if (!sess.session?.user) return
+    await supabase.from('bookmarks').delete().eq('user_id', sess.session.user.id).eq('char', char)
+  } catch { /* 静默失败 */ }
 }
 
 function isBookmarked(char: string): boolean {

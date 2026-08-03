@@ -130,28 +130,31 @@ const features = [
 const bookmarks = ref<Array<{char: string; meaning: string; category: string}>>([])
 
 async function loadBookmarks() {
-  const { data: sess } = await supabase.auth.getSession()
-  if (sess.session?.user) {
-    const { data } = await supabase.from('bookmarks').select('char').eq('user_id', sess.session.user.id)
-    if (data) bookmarks.value = data.map(d => d as {char: string; meaning: string; category: string})
-  }
+  try {
+    const { data: sess } = await supabase.auth.getSession()
+    if (sess.session?.user) {
+      const { data } = await supabase.from('bookmarks').select('char,meaning,category').eq('user_id', sess.session.user.id)
+      if (data) bookmarks.value = data as Array<{char: string; meaning: string; category: string}>
+    }
+  } catch { /* 网络异常时保留旧数据 */ }
 }
 
 async function saveBookmark(item: { char: string; meaning: string; category: string }) {
-  const { data: sess } = await supabase.auth.getSession()
-  if (!sess.session?.user) return
-  await supabase.from('bookmarks').insert({
-    user_id: sess.session.user.id,
-    char: item.char,
-    meaning: item.meaning,
-    category: item.category
-  })
+  try {
+    const { data: sess } = await supabase.auth.getSession()
+    if (!sess.session?.user) return
+    await supabase.from('bookmarks').insert({
+      user_id: sess.session.user.id, char: item.char, meaning: item.meaning, category: item.category
+    })
+  } catch { /* 静默失败 */ }
 }
 
 async function removeBookmark(char: string) {
-  const { data: sess } = await supabase.auth.getSession()
-  if (!sess.session?.user) return
-  await supabase.from('bookmarks').delete().eq('user_id', sess.session.user.id).eq('char', char)
+  try {
+    const { data: sess } = await supabase.auth.getSession()
+    if (!sess.session?.user) return
+    await supabase.from('bookmarks').delete().eq('user_id', sess.session.user.id).eq('char', char)
+  } catch { /* 静默失败 */ }
 }
 
 function isBookmarked(char: string): boolean {
@@ -178,6 +181,7 @@ const stats = reactive([
   { label: '帖文交流', target: 0, counting: '0' },
 ])
 
+const statsLoadFailed = ref(false)
 const statsReady = ref(false)
 let statsAnimated = false
 
@@ -185,7 +189,9 @@ async function loadStats() {
   try {
     const postsRes = await supabase.from('posts').select('*', { count: 'exact', head: true })
     if (postsRes.count != null) stats[3].target = postsRes.count
-  } catch (_) { /* 网络异常时保留默认值 */ }
+  } catch (_) {
+    statsLoadFailed.value = true
+  }
   statsReady.value = true
   if (statsVisible.value && !statsAnimated) {
     statsAnimated = true
@@ -210,7 +216,7 @@ const dc = [
   { char: '龙', meaning: '龙，神兽', desc: '象龙首角身尾之形。龙是殷人信仰中的重要神物，司雨、通天。', category: '象形字', era: '殷商' },
   { char: '山', meaning: '山峰', desc: '三峰并立，象山脉连绵。卜辞多用作地名和山神祭祀。', category: '象形字', era: '殷商' },
 ]
-const dailyWord = dc[t.getDay() % dc.length]
+const dailyWord = dc[Math.floor(t.getTime() / 86400000) % dc.length]
 
 // 甲骨文字体渲染映射（繁体码点才能被OracleBone字体渲染）
 const ORACLE_CHAR_MAP: Record<string, string> = {
