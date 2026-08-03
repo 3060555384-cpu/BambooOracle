@@ -73,6 +73,40 @@ let fileData: Blob | null = null
 let session: ort.InferenceSession | null = null
 let classMap: Record<string, string> = {}
 
+// ── IndexedDB 缓存 ──
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('BambooOracle', 1)
+    req.onupgradeneeded = () => { req.result.createObjectStore('models') }
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+async function loadWithCache(key: string, url: string): Promise<ArrayBuffer> {
+  const db = await openDB()
+  // 尝试读缓存
+  const cached = await new Promise<ArrayBuffer | null>(resolve => {
+    const tx = db.transaction('models', 'readonly')
+    const req = tx.objectStore('models').get(key)
+    req.onsuccess = () => resolve(req.result || null)
+    req.onerror = () => resolve(null)
+  })
+  if (cached) {
+    console.log('从缓存加载模型')
+    return cached
+  }
+  // 下载
+  console.log('下载模型...')
+  const resp = await fetch(url)
+  if (!resp.ok) throw new Error('模型下载失败')
+  const data = await resp.arrayBuffer()
+  // 存缓存
+  const tx = db.transaction('models', 'readwrite')
+  tx.objectStore('models').put(data, key)
+  return data
+}
+
 // ── 加载模型和映射 ──
 onMounted(async () => {
   try {
@@ -80,13 +114,12 @@ onMounted(async () => {
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/'
     
     // 同步加载映射表和模型
-    const [mapResp, modelResp] = await Promise.all([
+    const [mapResp] = await Promise.all([
       fetch('/class_to_common.json'),
-      fetch('/model_fp16.onnx'),
     ])
     
     classMap = await mapResp.json()
-    const modelBuffer = await modelResp.arrayBuffer()
+    const modelBuffer = await loadWithCache('model_fp16', 'https://cdn.jsdelivr.net/gh/3060555384-cpu/BambooOracle@main/public/model_fp16.onnx')
     
     modelProgress.value = 100
     session = await ort.InferenceSession.create(modelBuffer, {
