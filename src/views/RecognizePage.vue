@@ -136,7 +136,7 @@ onMounted(async () => {
     ])
     
     classMap = await mapResp.json()
-    const modelBuffer = await loadWithCache('model_v3', '/model_fp16.onnx')
+    const modelBuffer = await loadWithCache('model_v4', '/model_v4.onnx')
     
     modelProgress.value = 100
     session = await ort.InferenceSession.create(modelBuffer, {
