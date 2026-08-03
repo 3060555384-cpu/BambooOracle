@@ -119,7 +119,7 @@ onMounted(async () => {
     ])
     
     classMap = await mapResp.json()
-    const modelBuffer = await loadWithCache('model_fp16', 'https://cdn.jsdelivr.net/gh/3060555384-cpu/BambooOracle@main/public/model_fp16.onnx')
+    const modelBuffer = await loadWithCache('model_fp16', '/model_fp16.onnx')
     
     modelProgress.value = 100
     session = await ort.InferenceSession.create(modelBuffer, {
