@@ -7,7 +7,10 @@
     </div>
 
     <div class="upload-zone" :class="{ 'has-image': previewUrl }">
-      <div v-if="!previewUrl" class="upload-placeholder">
+      <div v-if="!previewUrl" class="upload-placeholder" :class="{ 'drag-over': dragOver }"
+        @dragover.prevent="dragOver = true"
+        @dragleave="dragOver = false"
+        @drop="onDrop">
         <div class="upload-icon">&#x1F4C4;</div>
         <p>点击或拖拽上传甲骨文图片</p>
         <p class="hint">支持 JPG / PNG，建议单字裁剪</p>
@@ -62,6 +65,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import * as ort from 'onnxruntime-web'
+import { supabase } from '../lib/supabase'
 
 // ── 状态 ──
 const previewUrl = ref('')
@@ -71,6 +75,7 @@ const modelProgress = ref(0)
 const results = ref<{ char: string; confidence: number }[]>([])
 const errorMsg = ref('')
 const elapsed = ref(0)
+const dragOver = ref(false)
 
 let fileData: Blob | null = null
 let session: ort.InferenceSession | null = null
@@ -88,7 +93,6 @@ function openDB(): Promise<IDBDatabase> {
 
 async function loadWithCache(key: string, url: string): Promise<ArrayBuffer> {
   const db = await openDB()
-  // 尝试读缓存
   const cached = await new Promise<ArrayBuffer | null>(resolve => {
     const tx = db.transaction('models', 'readonly')
     const req = tx.objectStore('models').get(key)
@@ -97,17 +101,25 @@ async function loadWithCache(key: string, url: string): Promise<ArrayBuffer> {
   })
   if (cached) {
     console.log('从缓存加载模型')
+    modelProgress.value = 100
     return cached
   }
-  // 下载
-  console.log('下载模型...')
-  const resp = await fetch(url)
-  if (!resp.ok) throw new Error('模型下载失败')
-  const data = await resp.arrayBuffer()
-  // 存缓存
-  const tx = db.transaction('models', 'readwrite')
-  tx.objectStore('models').put(data, key)
-  return data
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('GET', url)
+    xhr.responseType = 'arraybuffer'
+    xhr.onprogress = (e) => {
+      if (e.lengthComputable) modelProgress.value = Math.round(e.loaded / e.total * 100)
+    }
+    xhr.onload = async () => {
+      const data = xhr.response as ArrayBuffer
+      const tx = db.transaction('models', 'readwrite')
+      tx.objectStore('models').put(data, key)
+      resolve(data)
+    }
+    xhr.onerror = () => reject(new Error('模型下载失败'))
+    xhr.send()
+  })
 }
 
 // ── 加载模型和映射 ──
@@ -143,6 +155,16 @@ function onFileChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (input.files?.[0]) {
     fileData = input.files[0]
+    previewUrl.value = URL.createObjectURL(fileData)
+    results.value = []
+    errorMsg.value = ''
+  }
+}
+
+function onDrop(e: DragEvent) {
+  e.preventDefault(); dragOver.value = false
+  if (e.dataTransfer?.files?.[0]) {
+    fileData = e.dataTransfer.files[0]
     previewUrl.value = URL.createObjectURL(fileData)
     results.value = []
     errorMsg.value = ''
@@ -257,6 +279,17 @@ async function startRecognize() {
     }
     
     elapsed.value = parseFloat(((performance.now() - startTime) / 1000).toFixed(1))
+    // 保存识别历史到 Supabase
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      if (sess.session?.user) {
+        await supabase.from('recognition_history').insert({
+          user_id: sess.session.user.id,
+          chars: results.value.map(r => r.char).join(','),
+          created_at: new Date().toISOString()
+        })
+      }
+    } catch (_) { /* 静默忽略 */ }
   } catch (err: any) {
     errorMsg.value = '识别失败：' + (err.message || String(err))
   } finally {

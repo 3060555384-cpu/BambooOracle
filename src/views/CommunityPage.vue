@@ -76,6 +76,7 @@
             <div class="comment-foot">
               <span class="comment-time">{{ formatTime(c.created_at) }}</span>
               <button v-if="user" class="comment-reply-btn" @click="startReply(post, c)">回复</button>
+              <button v-if="user?.id === c.user_id" class="comment-reply-btn" style="color:var(--cinnabar-light)" @click="deleteComment(post, c.id)">删除</button>
             </div>
           </div>
           <div v-if="user" class="comment-form">
@@ -333,6 +334,14 @@ function startReply(post: Post, comment: Comment) {
 function cancelReply(post: Post) {
   post._replyTo = null
   post._replyText = ''
+}
+
+async function deleteComment(post: Post, commentId: number) {
+  if (!confirm('确定删除这条评论吗？')) return
+  try {
+    await supabase.from('comments').delete().eq('id', commentId)
+    post._comments = post._comments.filter(c => c.id !== commentId)
+  } catch (_) { alert('删除失败') }
 }
 
 async function addComment(post: Post) {
