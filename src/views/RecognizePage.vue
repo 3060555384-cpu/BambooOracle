@@ -32,17 +32,20 @@
     <div v-if="errorMsg" class="error-box">{{ errorMsg }}</div>
 
     <div v-if="results.length > 0" class="results-section">
-      <div class="results-header">
-        <h3>识别结果</h3>
-        <span class="elapsed" v-if="elapsed > 0">耗时 {{ elapsed }}s</span>
+      <div class="ink-seal">
+        <span class="seal-char">{{ results[0].char }}</span>
+        <span class="seal-conf">{{ results[0].confidence.toFixed(1) }}%</span>
       </div>
-      <div class="result-cards">
-        <div v-for="(r, i) in results" :key="i" class="result-card" :class="{ primary: i === 0 }">
-          <div class="result-char">{{ r.char }}</div>
-          <div class="result-info">
-            <div class="result-confidence">{{ r.confidence.toFixed(1) }}%</div>
-            <div class="result-rank">第{{ i + 1 }}候选</div>
-          </div>
+      <div class="results-meta">
+        <span class="meta-time">耗时 {{ elapsed }}s</span>
+        <span class="meta-divider">·</span>
+        <span class="meta-detail">1588 类甲骨文模型</span>
+      </div>
+      <div class="alt-results" v-if="results.length > 1">
+        <div v-for="(r, i) in results.slice(1)" :key="i" class="alt-item">
+          <span class="alt-char">{{ r.char }}</span>
+          <span class="alt-bar-bg"><span class="alt-bar-fill" :style="{width: (r.confidence / results[0].confidence * 100) + '%'}"></span></span>
+          <span class="alt-conf">{{ r.confidence.toFixed(1) }}%</span>
         </div>
       </div>
     </div>
@@ -299,19 +302,44 @@ async function startRecognize() {
   margin-top: 16px; padding: 12px 16px; background: #fff0f0;
   border: 1px solid #ecc; border-radius: var(--radius-md); color: #c33; font-size: .85rem;
 }
-.results-section { margin-top: 24px; }
-.results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.results-header h3 { font-size: 1rem; color: var(--ink); letter-spacing: 2px; }
-.elapsed { font-size: .8rem; color: var(--ink-wash); }
-.result-cards { display: flex; gap: 12px; }
-.result-card {
-  flex: 1; padding: 20px; background: var(--paper); border: 1px solid var(--paper-dark);
-  border-radius: var(--radius-md); text-align: center;
+.results-section { margin-top: 32px; text-align: center; }
+.ink-seal {
+  display: inline-flex; flex-direction: column; align-items: center;
+  width: 140px; height: 140px; border: 3px solid var(--gold);
+  border-radius: 4px; background: linear-gradient(135deg, #fdf6e8 0%, #faf0d7 100%);
+  justify-content: center; margin-bottom: 12px;
+  box-shadow: 0 2px 12px rgba(180,140,60,0.15);
 }
-.result-card.primary { border-color: var(--gold); background: #fdf8ed; }
-.result-char { font-size: 2.5rem; font-family: 'KaiTi', serif; color: var(--ink); margin-bottom: 8px; }
-.result-confidence { font-size: 1rem; color: var(--gold); font-weight: bold; }
-.result-rank { font-size: .75rem; color: var(--ink-wash); margin-top: 4px; }
+.seal-char {
+  font-size: 4rem; font-family: 'KaiTi', 'STKaiti', serif;
+  color: var(--ink); line-height: 1;
+}
+.seal-conf {
+  font-size: .85rem; color: var(--gold); letter-spacing: 1px; margin-top: 4px;
+}
+.results-meta {
+  display: flex; justify-content: center; gap: 8px; align-items: center;
+  font-size: .78rem; color: var(--ink-wash); margin-bottom: 20px;
+}
+.meta-divider { color: var(--gold-pale); }
+.alt-results { max-width: 360px; margin: 0 auto; }
+.alt-item {
+  display: flex; align-items: center; gap: 10px; padding: 6px 0;
+}
+.alt-char {
+  font-size: 1.4rem; font-family: 'KaiTi', serif; color: var(--ink);
+  width: 36px; text-align: center;
+}
+.alt-bar-bg {
+  flex: 1; height: 6px; background: var(--paper-dark); border-radius: 3px; overflow: hidden;
+}
+.alt-bar-fill {
+  display: block; height: 100%; background: var(--gold-pale); border-radius: 3px;
+  transition: width .6s ease;
+}
+.alt-conf {
+  font-size: .78rem; color: var(--ink-wash); width: 48px; text-align: right;
+}
 .tips-section { margin-top: 40px; }
 .tips-card { background: var(--paper); border: 1px solid var(--paper-dark); border-radius: var(--radius-md); padding: 20px 24px; }
 .tips-card h4 { font-size: .95rem; color: var(--gold); letter-spacing: 2px; margin-bottom: 12px; }
