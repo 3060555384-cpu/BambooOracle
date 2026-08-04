@@ -98,6 +98,9 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { supabase } from '../lib/supabase'
 import { currentUser, recoverUser, avatarVersion } from '../lib/auth'
+import { useToast } from '../composables/useToast'
+
+const { toast } = useToast()
 
 interface Comment { id: number; post_id: number; user_id: string; author: string; content: string; created_at: string; reply_to_user_id?: string; reply_to_author?: string; avatar_url?: string }
 interface Post { id: number; user_id: string; author: string; tag: string; content: string; likes: number; _liked: boolean; shared: boolean; created_at: string; _comments: Comment[]; _showComments: boolean; _replyText: string; _replyTo: Comment | null; avatar_url?: string }
@@ -228,7 +231,7 @@ async function submitPost() {
       content: newPost.value,
       tag: newTag.value
     }).select().single()
-    if (error) { alert('发布失败: ' + error.message); return }
+    if (error) { toast('发布失败: ' + error.message, 'error'); return }
     if (data) {
       data.avatar_url = user.value.avatar_url || ''
       data._comments = []
@@ -242,7 +245,7 @@ async function submitPost() {
       newPost.value = ''
     }
   } catch (err) {
-    alert('发布异常，请重试')
+    toast('发布异常，请重试', 'error')
   } finally {
     posting.value = false
   }
@@ -275,10 +278,10 @@ async function deletePost(id: number) {
   try {
     await supabase.from('comments').delete().eq('post_id', id)
     const { error } = await supabase.from('posts').delete().eq('id', id)
-    if (error) { alert('删除失败: ' + error.message); return }
+    if (error) { toast('删除失败: ' + error.message, 'error'); return }
     posts.value = posts.value.filter(p => p.id !== id)
   } catch {
-    alert('删除异常，请重试')
+    toast('删除异常，请重试', 'error')
   }
 }
 
@@ -341,7 +344,7 @@ async function deleteComment(post: Post, commentId: number) {
   try {
     await supabase.from('comments').delete().eq('id', commentId)
     post._comments = post._comments.filter(c => c.id !== commentId)
-  } catch (_) { alert('删除失败') }
+  } catch (_) { toast('删除失败', 'error') }
 }
 
 async function addComment(post: Post) {
@@ -359,7 +362,7 @@ async function addComment(post: Post) {
   const { data, error } = await supabase.from('comments').insert(payload).select().single()
   if (error) {
     console.error('评论失败:', error.message)
-    alert('评论发送失败: ' + error.message)
+    toast('评论发送失败: ' + error.message, 'error')
     return
   }
   if (data) {

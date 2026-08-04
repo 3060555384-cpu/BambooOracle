@@ -163,6 +163,9 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase, uploadAvatar } from '../lib/supabase'
 import { currentUser, setCurrentUser, logoutUser, recoverUser, avatarVersion, bumpAvatarVersion } from '../lib/auth'
+import { useToast } from '../composables/useToast'
+
+const { toast } = useToast()
 
 const router = useRouter()
 
@@ -207,7 +210,7 @@ async function handleAvatarChange(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file || !user.value) return
   if (file.size > 2 * 1024 * 1024) {
-    alert('头像文件不能超过 2MB')
+    toast('头像文件不能超过 2MB', 'error')
     return
   }
   uploadingAvatar.value = true
@@ -217,7 +220,7 @@ async function handleAvatarChange(e: Event) {
     if (!sess.session) {
       const { error: refErr } = await supabase.auth.refreshSession()
       if (refErr) {
-        alert('登录已过期，请重新登录后再上传头像')
+        toast('登录已过期，请重新登录后再上传头像', 'error')
         uploadingAvatar.value = false
         return
       }
@@ -228,13 +231,13 @@ async function handleAvatarChange(e: Event) {
         bumpAvatarVersion()
       const { error: dbErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.value.id)
       if (dbErr) {
-        alert('保存头像失败: ' + dbErr.message)
+        toast('保存头像失败: ' + dbErr.message, 'error')
       }
     } else {
-      alert('头像上传失败，请重新登录后再试。如果问题持续，请刷新页面。')
+      toast('头像上传失败，请重新登录后再试。如果问题持续，请刷新页面。', 'error')
     }
   } catch (err: any) {
-    alert('上传出错: ' + (err?.message || '未知错误'))
+    toast('上传出错: ' + (err?.message || '未知错误', 'error'))
   }
   uploadingAvatar.value = false
   // 重置 input 以允许重复选择同一文件
@@ -264,9 +267,9 @@ async function saveNick() {
     setCurrentUser({ ...user.value, nickname: val })
     try {
       const { error } = await supabase.from('profiles').update({ nickname: val }).eq('id', user.value.id)
-      if (error) alert('昵称保存失败: ' + error.message)
+      if (error) toast('昵称保存失败: ' + error.message, 'error')
     } catch {
-      alert('昵称保存异常，请重试')
+      toast('昵称保存异常，请重试', 'error')
     }
   }
   editingNick.value = false
@@ -312,9 +315,9 @@ async function clearBookmarks() {
   if (!confirm('确定要清空所有收藏吗？此操作不可撤销。')) return
   try {
     const { error } = await supabase.from('bookmarks').delete().eq('user_id', user.value.id)
-    if (error) { alert('清空失败: ' + error.message); return }
+    if (error) { toast('清空失败: ' + error.message, 'error'); return }
     bookmarks.value = []
-  } catch { alert('清空异常，请重试') }
+  } catch { toast('清空异常，请重试', 'error') }
 }
 
 async function clearHistory() {
@@ -322,9 +325,9 @@ async function clearHistory() {
   if (!confirm('确定要清空所有识别历史吗？此操作不可撤销。')) return
   try {
     const { error } = await supabase.from('recognition_history').delete().eq('user_id', user.value.id)
-    if (error) { alert('清空失败: ' + error.message); return }
+    if (error) { toast('清空失败: ' + error.message, 'error'); return }
     historyItems.value = []
-  } catch { alert('清空异常，请重试') }
+  } catch { toast('清空异常，请重试', 'error') }
 }
 
 function goToDictionary() {

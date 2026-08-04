@@ -113,6 +113,9 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useRoute } from 'vue-router'
+import { useToast } from '../composables/useToast'
+
+const { toast } = useToast()
 
 const chars = [
   {
@@ -1008,7 +1011,7 @@ function isBookmarked(char: string): boolean {
 
 async function toggleBookmark(item: typeof chars[0]) {
   const { data: sess } = await supabase.auth.getSession()
-  if (!sess.session?.user) { alert('请先登录'); return }
+  if (!sess.session?.user) { toast('请先登录', 'info'); return }
   const idx = bookmarks.value.findIndex(b => b.char === item.char)
   if (idx >= 0) {
     bookmarks.value.splice(idx, 1)

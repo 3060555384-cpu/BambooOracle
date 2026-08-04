@@ -90,6 +90,7 @@
     <button v-show="showTop" class="scroll-top" @click="scrollToTop" title="回到顶部">
       <span class="scroll-top-seal">甲</span>
     </button>
+    <ToastContainer />
   </div>
 </template>
 
@@ -97,6 +98,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { currentUser, refreshUser, initAuthListener, logoutUser, avatarVersion } from './lib/auth'
+import ToastContainer from './components/ToastContainer.vue'
 
 const year = new Date().getFullYear()
 const menuOpen = ref(false)

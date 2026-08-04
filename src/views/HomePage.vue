@@ -100,6 +100,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
 import { supabase } from '../lib/supabase'
+import { useToast } from '../composables/useToast'
+
+const { toast } = useToast()
 
 const featRef = ref<HTMLElement>()
 const dailyRef = ref<HTMLElement>()
@@ -163,7 +166,7 @@ function isBookmarked(char: string): boolean {
 
 async function toggleBookmark(item: { char: string; meaning: string; category: string }) {
   const { data: sess } = await supabase.auth.getSession()
-  if (!sess.session?.user) { alert('请先登录'); return }
+  if (!sess.session?.user) { toast('请先登录', 'info'); return }
   const idx = bookmarks.value.findIndex(b => b.char === item.char)
   if (idx >= 0) {
     bookmarks.value.splice(idx, 1)
