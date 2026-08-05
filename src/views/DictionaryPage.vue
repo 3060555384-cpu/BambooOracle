@@ -46,9 +46,9 @@
         <img v-if="(char as any).rubbingImg" :src="(char as any).rubbingImg" class="dict-rubbing-img" alt="" />
         <div v-if="hasOracleGlyph(char.char)" class="dict-char oracle">{{ toOracleChar(char.char) }}</div>
         <div v-else class="dict-char not-found">未收录</div>
-        <div class="dict-meaning">{{ char.meaning }}</div>
-        <div class="dict-pinyin">{{ char.pinyin }}</div>
-        <div class="dict-category">{{ char.category }}</div>
+        <div class="dict-meaning" v-html="highlight(char.meaning, search)"></div>
+        <div class="dict-pinyin" v-html="highlight(char.pinyin, search)"></div>
+        <div class="dict-category" v-html="highlight(char.category, search)"></div>
       </div>
     </div>
 
@@ -1050,6 +1050,13 @@ const filteredChars = computed(() => {
   }
   return result
 })
+
+// 高亮匹配文字
+function highlight(text: string, keyword: string): string {
+  if (!keyword) return text
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return text.replace(new RegExp(`(${escaped})`, 'gi'), '<mark class="hl">$1</mark>')
+}
 </script>
 
 <style scoped>
@@ -1063,6 +1070,7 @@ const filteredChars = computed(() => {
 .search-clear{position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--ink-wash);font-size:1.1rem;padding:2px 6px}
 .search-clear:hover{color:var(--cinnabar)}
 .search-result-hint{text-align:center;color:var(--ink-wash);font-size:.85rem;margin-top:12px;animation:fadeIn .3s ease}
+mark.hl{background:rgba(184,134,11,.18);color:var(--gold-dark,#8b6914);padding:1px 3px;border-radius:2px;font-weight:bold}
 
 /* ------ 拼音检索 ------ */
 .search-methods{margin-top:16px;display:flex;flex-direction:column;align-items:center;gap:10px}
