@@ -283,14 +283,20 @@ async function startRecognize() {
     const indexed = Array.from(probs).map((p, i) => ({ idx: i, prob: p }))
     indexed.sort((a, b) => b.prob - a.prob)
     
+    const CONFIDENCE_THRESHOLD = 60 // 低于60%置信度不显示
     for (let i = 0; i < 3; i++) {
       const { idx, prob } = indexed[i]
       const char = classMap[String(idx)] || '?'
       if (char === '?' || char.includes('(')) continue
+      if (prob * 100 < CONFIDENCE_THRESHOLD) continue
       results.value.push({ char, confidence: prob * 100 })
     }
     
     elapsed.value = parseFloat(((performance.now() - startTime) / 1000).toFixed(1))
+    // 无高置信度结果时提示
+    if (results.value.length === 0) {
+      errorMsg.value = '未能识别出有效甲骨文字，请尝试更清晰/更接近拓片风格的图片'
+    }
     // 保存识别历史到 Supabase
     try {
       const { data: sess } = await supabase.auth.getSession()
