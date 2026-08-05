@@ -19,8 +19,8 @@
       <div v-else class="preview-area">
         <img :src="previewUrl" alt="预览" class="preview-img" />
         <div v-if="preprocessedUrl" class="preprocessed-info">
-          <span>模型实际看到的图像 (128×128)：</span>
-          <img :src="preprocessedUrl" alt="预处理" class="preprocessed-img" />
+          <span class="ai-view-label">AI 分析视角</span>
+          <img :src="preprocessedUrl" alt="AI视角" class="preprocessed-img" />
         </div>
         <div class="preview-actions">
           <button @click="startRecognize" :disabled="recognizing || modelLoading" class="btn-recognize">
@@ -295,7 +295,7 @@ async function startRecognize() {
     elapsed.value = parseFloat(((performance.now() - startTime) / 1000).toFixed(1))
     // 无高置信度结果时提示
     if (results.value.length === 0) {
-      errorMsg.value = '未能识别出有效甲骨文字，请尝试更清晰/更接近拓片风格的图片'
+      errorMsg.value = '这个字好像有点难倒我了，试试换个更清晰的单字图吧'
     }
     // 保存识别历史到 Supabase
     try {
@@ -334,7 +334,8 @@ async function startRecognize() {
 .preview-area { text-align: center; }
 .preview-img { max-width: 100%; max-height: 400px; border-radius: var(--radius-md); border: 2px solid var(--gold-pale); }
 .preprocessed-info { margin-top: 10px; font-size: .78rem; color: var(--ink-wash); text-align: center; }
-.preprocessed-img { display: block; margin: 6px auto 0; width: 128px; height: 128px; border: 1px solid var(--paper-dark); border-radius: 4px; image-rendering: pixelated; }
+.ai-view-label { display: inline-block; padding: 3px 10px; background: var(--gold-pale); border-radius: 12px; font-size: .75rem; color: var(--gold-dark, #8b6914); font-weight: 500; margin-bottom: 6px; }
+.preprocessed-img { display: block; margin: 0 auto; width: 96px; height: 96px; border: 1px solid var(--paper-dark); border-radius: 6px; image-rendering: pixelated; background: #faf8f3; padding: 4px; }
 .preview-actions { margin-top: 16px; display: flex; gap: 12px; justify-content: center; }
 .btn-recognize {
   padding: 12px 32px; background: var(--gold); color: #fff; border: none;
@@ -352,9 +353,11 @@ async function startRecognize() {
 .progress-track { height: 4px; background: var(--paper-dark); border-radius: 2px; overflow: hidden; max-width: 300px; margin: 0 auto; }
 .progress-fill { height: 100%; background: var(--gold); transition: width .3s; }
 .error-box {
-  margin-top: 16px; padding: 12px 16px; background: #fff0f0;
-  border: 1px solid #ecc; border-radius: var(--radius-md); color: #c33; font-size: .85rem;
+  margin-top: 16px; padding: 14px 18px; background: #fef9e7;
+  border: 1px solid #e8d5a3; border-radius: var(--radius-md); color: #8b6914; font-size: .85rem;
+  display: flex; align-items: center; gap: 8px;
 }
+.error-box::before { content: '💡'; font-size: 1.1rem; flex-shrink: 0; }
 .results-section { margin-top: 32px; text-align: center; }
 .ink-seal {
   display: inline-flex; flex-direction: column; align-items: center;
