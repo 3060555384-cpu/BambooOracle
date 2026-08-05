@@ -18,6 +18,10 @@
       </div>
       <div v-else class="preview-area">
         <img :src="previewUrl" alt="预览" class="preview-img" />
+        <div v-if="preprocessedUrl" class="preprocessed-info">
+          <span>模型实际看到的图像 (128×128)：</span>
+          <img :src="preprocessedUrl" alt="预处理" class="preprocessed-img" />
+        </div>
         <div class="preview-actions">
           <button @click="startRecognize" :disabled="recognizing || modelLoading" class="btn-recognize">
             {{ modelLoading ? '模型加载中...' : recognizing ? '识别中...' : '开始识甲' }}
@@ -71,6 +75,7 @@ import { supabase } from '../lib/supabase'
 
 // ── 状态 ──
 const previewUrl = ref('')
+const preprocessedUrl = ref('')
 const recognizing = ref(false)
 const modelLoading = ref(true)
 const modelProgress = ref(0)
@@ -212,6 +217,9 @@ async function preprocessImage(blob: Blob): Promise<Float32Array> {
   const sctx = scaled.getContext('2d')!
   sctx.drawImage(canvas, 0, 0, maxSide, maxSide, 0, 0, size, size)
   
+  // 保存预处理后的图像供预览
+  preprocessedUrl.value = scaled.toDataURL('image/png')
+  
   // 提取像素
   const imageData = sctx.getImageData(0, 0, size, size)
   const pixels = imageData.data
@@ -319,6 +327,8 @@ async function startRecognize() {
 }
 .preview-area { text-align: center; }
 .preview-img { max-width: 100%; max-height: 400px; border-radius: var(--radius-md); border: 2px solid var(--gold-pale); }
+.preprocessed-info { margin-top: 10px; font-size: .78rem; color: var(--ink-wash); text-align: center; }
+.preprocessed-img { display: block; margin: 6px auto 0; width: 128px; height: 128px; border: 1px solid var(--paper-dark); border-radius: 4px; image-rendering: pixelated; }
 .preview-actions { margin-top: 16px; display: flex; gap: 12px; justify-content: center; }
 .btn-recognize {
   padding: 12px 32px; background: var(--gold); color: #fff; border: none;
