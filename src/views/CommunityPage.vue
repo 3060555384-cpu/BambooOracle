@@ -124,15 +124,14 @@ function openAvatarModal(src: string) {
 
   const overlay = document.createElement('div')
   overlay.className = 'avatar-modal-overlay'
-  overlay.innerHTML = `
-    <div class="avatar-modal-card">
-      <button class="avatar-modal-close">&times;</button>
-      <img src="${src}" class="avatar-modal-img" alt="头像大图" />
-    </div>`
+  const card = document.createElement('div'); card.className = 'avatar-modal-card'
+  const closeBtn = document.createElement('button'); closeBtn.className = 'avatar-modal-close'; closeBtn.textContent = '\u00d7'
+  const avImg = document.createElement('img'); avImg.src = src; avImg.className = 'avatar-modal-img'; avImg.alt = '头像大图'
+  card.append(closeBtn, avImg); overlay.appendChild(card)
   overlay.addEventListener('click', (ev) => {
     if (ev.target === overlay) overlay.remove()
   })
-  overlay.querySelector('.avatar-modal-close')!.addEventListener('click', () => overlay.remove())
+  closeBtn.addEventListener('click', () => overlay.remove())
   document.body.appendChild(overlay)
 }
 

@@ -32,6 +32,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: '仅支持 POST 请求' })
   }
 
+  // 防止跨站请求
+  const origin = (req.headers['origin'] || req.headers['referer'] || '') as string
+  const allowed = ['bamboooracle.cn', 'localhost']
+  if (origin && !allowed.some(h => origin.includes(h))) {
+    return res.status(403).json({ error: '请求来源不被允许' })
+  }
+
   // 提取客户端 IP
   const ip =
     (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
