@@ -30,3 +30,4 @@ hf-deploy/
 temp-space/
 api/app.py
 api/requirements.txt
+api/max_val_acc.pth
